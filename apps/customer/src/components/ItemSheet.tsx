@@ -57,7 +57,7 @@ export function ItemSheet({
           </div>
           <div className="flex items-center gap-3">
             <QtyStepper value={qty} onChange={setQty} min={1} max={MAX_QTY} />
-            <Button size="lg" className="flex-1" onClick={() => onAdd(item, qty, note)}>
+            <Button size="lg" className="flex-1 rounded-full" onClick={() => onAdd(item, qty, note)}>
               Add · {formatMoney(item.priceMinor * qty, currency)}
             </Button>
           </div>

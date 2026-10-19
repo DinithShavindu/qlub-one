@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* qlub guest look (app-staging.qlub.cloud): white, near-black pills, Inter. Overrides @one/ui tokens for this app only. */
+:root {
+  --ink: 6 2 1;               /* #060201 */
+  --ink-soft: 26 28 35;       /* #1A1C23 */
+  --ink-muted: 97 100 117;    /* #616475 */
+  --paper: 255 255 255;
+  --surface: 255 255 255;
+  --surface-sunk: 245 245 247;
+  --line: 235 236 242;        /* #EBECF2 */
+  --brand: 6 2 1;
+  --brand-strong: 6 2 1;
+  --on-brand: 255 255 255;
+}
+
+/* Dark doodle backdrop behind the white column (qlub style). Own SVG tile; `fixed` keeps the top band and the page edges aligned. */
+html { background: #060201; }
+.qlub-pattern {
+  background-color: #060201;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' fill='none' stroke='%23ffffff' stroke-opacity='.22' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 18v16m6-16v16m6-16v16M20 34q6 6 12 0M26 37v22'/%3E%3Cpath d='M70 70l20 34 20-34q-20-8-40 0z'/%3E%3Ccircle cx='86' cy='82' r='2' fill='%23ffffff' fill-opacity='.22'/%3E%3Cpath d='M120 20h22l-11 16zM131 36v14m-7 0h14'/%3E%3Cpath d='M18 112q10-14 20 0t20 0'/%3E%3Cpath d='M118 118a12 12 0 1 0 24 0a12 12 0 1 0-24 0m12-12q2-6 7-7'/%3E%3Ccircle cx='60' cy='20' r='4' fill='%23ffffff' fill-opacity='.22' stroke='none'/%3E%3Ccircle cx='150' cy='80' r='3' fill='%23ffffff' fill-opacity='.22' stroke='none'/%3E%3Ccircle cx='40' cy='148' r='3' fill='%23ffffff' fill-opacity='.22' stroke='none'/%3E%3Cpath d='M84 140q0-12 10-16'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  background-attachment: fixed;
+}

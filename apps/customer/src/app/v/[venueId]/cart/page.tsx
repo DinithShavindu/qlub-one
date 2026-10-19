@@ -48,7 +48,7 @@ export default function CartPage({ params }: { params: { venueId: string } }) {
           title="Your cart is empty"
           body="Add something from any stall — you'll pay once for everything."
           action={
-            <Link href={menuHref} className="inline-flex h-11 items-center rounded-md bg-brand px-4 font-semibold text-on-brand">
+            <Link href={menuHref} className="inline-flex h-11 items-center rounded-full bg-brand px-5 font-semibold text-on-brand">
               Browse menu
             </Link>
           }
@@ -106,6 +106,7 @@ export default function CartPage({ params }: { params: { venueId: string } }) {
           <Button
             size="lg"
             block
+            className="rounded-full"
             disabled={!canCheckout}
             loading={quote.isFetching}
             onClick={() => router.push(`/v/${venueId}/checkout`)}

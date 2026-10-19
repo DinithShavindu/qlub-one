@@ -222,7 +222,7 @@ export default function TrackerPage({ params }: { params: { masterOrderId: strin
           <p className="text-small text-ink-muted">Show this screen at the counter.</p>
           <Link
             href={`/v/${masterOrder.venueId}/menu`}
-            className="inline-flex h-11 items-center rounded-md border border-line bg-surface px-5 font-semibold hover:bg-surface-sunk focus-visible:ring-2 focus-visible:ring-brand-strong"
+            className="inline-flex h-11 items-center rounded-full border border-line bg-surface px-5 font-semibold hover:bg-surface-sunk focus-visible:ring-2 focus-visible:ring-brand-strong"
           >
             Order more
           </Link>

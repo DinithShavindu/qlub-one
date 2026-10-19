@@ -120,7 +120,7 @@ export default function CheckoutPage({ params }: { params: { venueId: string } }
         icon={<ShoppingBag className="h-10 w-10" />}
         title="Your cart is empty"
         action={
-          <Link href={`/v/${venueId}/menu`} className="inline-flex h-11 items-center rounded-md bg-brand px-4 font-semibold text-on-brand">
+          <Link href={`/v/${venueId}/menu`} className="inline-flex h-11 items-center rounded-full bg-brand px-5 font-semibold text-on-brand">
             Browse menu
           </Link>
         }
@@ -234,7 +234,7 @@ export default function CheckoutPage({ params }: { params: { venueId: string } }
               <p className="text-small font-semibold">{payError}</p>
             </div>
           )}
-          <Button size="lg" block loading={pay.isPending} disabled={quote.isFetching} onClick={() => pay.mutate()}>
+          <Button size="lg" block className="rounded-full" loading={pay.isPending} disabled={quote.isFetching} onClick={() => pay.mutate()}>
             {pay.isPending ? "Paying…" : payError ? `Try again · ${formatMoney(q.totalMinor, q.currency)}` : `Pay ${formatMoney(q.totalMinor, q.currency)}`}
           </Button>
         </div>
