@@ -1,11 +1,12 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@one/ui";
 import type {
   AdminVenueDetailResponse,
   AdminVenuesResponse,
   DashboardResponse,
   PosVendorsResponse,
+  QrListResponse,
   SettlementsResponse,
   TablesResponse,
 } from "@one/contracts";
@@ -18,7 +19,24 @@ export const qk = {
   tables: (id: string) => ["tables", id] as const,
   settlements: (id: string, vendorId: string, type: string) => ["settlements", id, vendorId, type] as const,
   posVendors: ["pos-vendors"] as const,
+  qrList: (params: string) => ["qr-list", params] as const,
 };
+
+/** Builds the `/v1/admin/qr/list` query string; empty values are dropped. */
+export function qrListParams(p: Record<string, string | number | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(p)) if (v !== undefined && v !== "") q.set(k, String(v));
+  return q.toString();
+}
+
+export function useQrList(params: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.qrList(params),
+    queryFn: () => apiFetch<QrListResponse>(`/v1/admin/qr/list?${params}`),
+    placeholderData: keepPreviousData,
+    enabled,
+  });
+}
 
 export function useMe() {
   return useQuery({ queryKey: qk.me, queryFn: () => apiFetch<{ ok: true }>("/v1/admin/me"), staleTime: 60_000 });

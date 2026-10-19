@@ -43,7 +43,7 @@ export function Wizard({ venueId }: { venueId: string | null }) {
       if (!venueId) {
         return apiFetch<{ venue: Venue; onboardingRun: OnboardingRun }>("/v1/admin/venues", { method: "POST", json: req });
       }
-      const changed = d && (d.venue.name !== req.name || d.venue.feeBps !== req.feeBps);
+      const changed = d && (d.venue.name !== req.name || d.venue.type !== req.type || d.venue.feeBps !== req.feeBps);
       if (changed) await apiFetch(`/v1/admin/venues/${venueId}`, { method: "PATCH", json: req });
       return null;
     },

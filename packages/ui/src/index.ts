@@ -17,3 +17,4 @@ export * from "./components/ConnectionDot";
 export * from "./sse";
 export * from "./api-client";
 export * from "./sound";
+export * from "./qr";

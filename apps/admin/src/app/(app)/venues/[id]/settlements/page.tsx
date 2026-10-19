@@ -2,15 +2,14 @@
 import { cx } from "@/lib/cx";
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Info, Receipt } from "lucide-react";
+import { Building2, Info, Receipt } from "lucide-react";
 import { EmptyState, ErrorState, MoneyText, Skeleton, VendorBadge } from "@one/ui";
 import type { Vendor } from "@one/contracts";
 import { Card } from "@/components/Card";
+import { FilterBar, FilterChip, SelectPill } from "@/components/FilterBar";
 import { PageHeader } from "@/components/PageHeader";
 import { LedgerTable } from "@/components/venue/LedgerTable";
 import { useSettlements, useVenue } from "@/lib/queries";
-
-const select = "h-10 rounded-md border border-line bg-surface px-3 text-small font-semibold";
 
 export default function SettlementsPage() {
   const { id } = useParams<{ id: string }>();
@@ -62,7 +61,7 @@ export default function SettlementsPage() {
       {header}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {s.byVendor.map((b) => (
-          <section key={b.vendor.id} className="rounded-lg border border-line bg-surface p-4 shadow-card">
+          <section key={b.vendor.id} className="rounded-2xl border border-line bg-surface p-5">
             <VendorBadge vendor={b.vendor} size="sm" />
             <dl className="mt-3 grid grid-cols-2 gap-y-1 text-small">
               <dt className="text-ink-muted">Gross</dt>
@@ -82,32 +81,28 @@ export default function SettlementsPage() {
         ))}
       </div>
 
-      <Card
-        title="Ledger"
-        actions={
-          <div className="flex items-center gap-3">
-            <label className="sr-only" htmlFor="f-vendor">
-              Filter by vendor
-            </label>
-            <select id="f-vendor" className={select} value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
-              <option value="">All vendors</option>
-              {s.byVendor.map((b) => (
-                <option key={b.vendor.id} value={b.vendor.id}>
-                  {b.vendor.emoji} {b.vendor.name}
-                </option>
-              ))}
-            </select>
-            <label className="sr-only" htmlFor="f-type">
-              Filter by type
-            </label>
-            <select id="f-type" className={select} value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="">Sales &amp; reversals</option>
-              <option value="sale">Sales</option>
-              <option value="reversal">Reversals</option>
-            </select>
-          </div>
-        }
-      >
+      <FilterBar>
+        {venue.data && (
+          <FilterChip icon={<Building2 className="h-5 w-5" />} clearHref="/venues" clearLabel="Back to all venues">
+            Venue: {venue.data.venue.name}
+          </FilterChip>
+        )}
+        <SelectPill id="f-vendor" label="Filter by vendor" value={vendorId} onChange={setVendorId}>
+          <option value="">All vendors</option>
+          {s.byVendor.map((b) => (
+            <option key={b.vendor.id} value={b.vendor.id}>
+              {b.vendor.emoji} {b.vendor.name}
+            </option>
+          ))}
+        </SelectPill>
+        <SelectPill id="f-type" label="Filter by type" value={type} onChange={setType}>
+          <option value="">Sales &amp; reversals</option>
+          <option value="sale">Sales</option>
+          <option value="reversal">Reversals</option>
+        </SelectPill>
+      </FilterBar>
+
+      <Card title="Ledger">
         {s.entries.length === 0 ? (
           <EmptyState
             icon={<Receipt className="h-8 w-8" />}
@@ -117,7 +112,7 @@ export default function SettlementsPage() {
         ) : (
           <LedgerTable entries={s.entries} vendors={vendors} currency={cur} timezone={tz} />
         )}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line bg-surface-sunk px-5 py-3 text-small">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-b-2xl border-t border-line bg-paper px-6 py-4 text-small">
           <span className="text-ink-soft">
             All entries · gross <MoneyText minor={s.totals.grossMinor} currency={cur} className="font-semibold text-ink" /> · fees{" "}
             <MoneyText minor={s.totals.feeMinor} currency={cur} className="font-semibold text-ink" /> · vendor net{" "}

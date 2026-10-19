@@ -3,19 +3,18 @@ import { cx } from "@/lib/cx";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, LayoutDashboard, LogOut, Plus, QrCode, Receipt, Store } from "lucide-react";
+import { Building2, LogOut, Plus, QrCode, Receipt } from "lucide-react";
 import { apiFetch } from "@one/ui";
-import { useVenue } from "@/lib/queries";
 import { useCurrentVenueId } from "./use-current-venue-id";
 
-function NavLink({ href, active, icon, children }: { href: string; active: boolean; icon: ReactNode; children: ReactNode }) {
+function RailLink({ href, active, icon, children }: { href: string; active: boolean; icon: ReactNode; children: ReactNode }) {
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
       className={cx(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-small font-semibold transition",
-        active ? "bg-ink text-paper" : "text-ink-soft hover:bg-surface-sunk",
+        "flex flex-col items-center gap-1.5 px-1 py-3.5 text-[11px] font-semibold transition",
+        active ? "bg-rail-active text-white" : "text-rail-fg hover:bg-rail-hover hover:text-white",
       )}
     >
       <span aria-hidden>{icon}</span>
@@ -24,12 +23,20 @@ function NavLink({ href, active, icon, children }: { href: string; active: boole
   );
 }
 
+/** qlub mark: 3×3 dot grid. */
+function Logo() {
+  return (
+    <span className="grid grid-cols-3 gap-[3px]" aria-hidden>
+      {Array.from({ length: 9 }, (_, i) => (
+        <span key={i} className={cx("h-[5px] w-[5px] rounded-full", i === 4 ? "bg-transparent" : "bg-brand")} />
+      ))}
+    </span>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const venueId = useCurrentVenueId();
-  const venue = useVenue(venueId);
-  const inVenue = venueId && !pathname.startsWith("/venues/new");
-  const isLive = venue.data?.venue.status === "live";
 
   async function logout() {
     await apiFetch("/v1/admin/logout", { method: "POST" }).catch(() => undefined);
@@ -37,49 +44,38 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="no-print sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-line bg-surface px-4 py-6">
-      <Link href="/venues" className="mb-8 px-3">
-        <span className="block font-display text-h2 font-bold">qlub Ops</span>
-        <span className="text-micro font-semibold uppercase text-ink-muted">One venue, one setup</span>
+    <aside className="no-print sticky top-0 flex h-screen w-[88px] shrink-0 flex-col bg-rail">
+      <Link href="/venues" className="flex h-[78px] items-center justify-center border-b border-white/5" aria-label="qlub Ops home">
+        <Logo />
       </Link>
-      <nav className="flex flex-col gap-1" aria-label="Main">
-        <NavLink href="/venues" active={pathname === "/venues"} icon={<Building2 className="h-4 w-4" />}>
-          Venues
-        </NavLink>
-        <NavLink href="/venues/new" active={pathname.startsWith("/venues/new")} icon={<Plus className="h-4 w-4" />}>
-          New venue
-        </NavLink>
+      <nav className="flex flex-col pt-4" aria-label="Main">
+        <RailLink
+          href="/venues"
+          active={pathname.startsWith("/venues") && !pathname.startsWith("/venues/new") && !pathname.endsWith("/settlements")}
+          icon={<Building2 className="h-5 w-5" />}
+        >
+          Places
+        </RailLink>
+        <RailLink href="/venues/new" active={pathname.startsWith("/venues/new")} icon={<Plus className="h-5 w-5" />}>
+          Onboard
+        </RailLink>
+        <RailLink href="/qrs" active={pathname.startsWith("/qrs")} icon={<QrCode className="h-5 w-5" />}>
+          QRs
+        </RailLink>
+        <RailLink
+          href={venueId ? `/venues/${venueId}/settlements` : "/venues"}
+          active={pathname.endsWith("/settlements")}
+          icon={<Receipt className="h-5 w-5" />}
+        >
+          Payments
+        </RailLink>
       </nav>
-
-      {inVenue && (
-        <nav className="mt-8 flex flex-col gap-1" aria-label="Venue">
-          <p className="mb-1 truncate px-3 text-micro font-semibold uppercase text-ink-muted">{venue.data?.venue.name ?? "Venue"}</p>
-          {venue.data && !isLive && (
-            <NavLink href={`/venues/new?id=${venueId}`} active={false} icon={<Plus className="h-4 w-4" />}>
-              Continue setup
-            </NavLink>
-          )}
-          <NavLink href={`/venues/${venueId}`} active={pathname === `/venues/${venueId}`} icon={<LayoutDashboard className="h-4 w-4" />}>
-            Dashboard
-          </NavLink>
-          <NavLink href={`/venues/${venueId}/vendors`} active={pathname.endsWith("/vendors")} icon={<Store className="h-4 w-4" />}>
-            Vendors
-          </NavLink>
-          <NavLink href={`/venues/${venueId}/tables`} active={pathname.endsWith("/tables")} icon={<QrCode className="h-4 w-4" />}>
-            Tables &amp; QR
-          </NavLink>
-          <NavLink href={`/venues/${venueId}/settlements`} active={pathname.endsWith("/settlements")} icon={<Receipt className="h-4 w-4" />}>
-            Settlements
-          </NavLink>
-        </nav>
-      )}
-
       <button
         type="button"
         onClick={logout}
-        className="mt-auto flex items-center gap-3 rounded-md px-3 py-2 text-small font-semibold text-ink-soft hover:bg-surface-sunk"
+        className="mt-auto flex flex-col items-center gap-1.5 px-1 py-4 text-[11px] font-semibold text-rail-fg transition hover:bg-rail-hover hover:text-white"
       >
-        <LogOut className="h-4 w-4" aria-hidden />
+        <LogOut className="h-5 w-5" aria-hidden />
         Log out
       </button>
     </aside>

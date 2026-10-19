@@ -1,7 +1,13 @@
 "use client";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@one/ui";
-import type { CreateVenueRequest, Venue } from "@one/contracts";
+import type { CreateVenueRequest, Venue, VenueType } from "@one/contracts";
+import { VENUE_TYPE_LABEL } from "@/lib/format";
+
+const TYPE_HINT: Record<VenueType, string> = {
+  food_court: "Many vendors, shared seating, one QR per seat.",
+  hotel: "Restaurants, bars and room service under one roof, one QR per table or room.",
+};
 
 const input = "h-11 w-full rounded-md border border-line bg-surface px-3 text-body disabled:bg-surface-sunk disabled:text-ink-soft";
 
@@ -35,6 +41,7 @@ export function StepVenueForm({
   onSubmit: (req: CreateVenueRequest) => void;
 }) {
   const [name, setName] = useState(venue?.name ?? "Harbour Food Hall");
+  const [type, setType] = useState<VenueType>(venue?.type ?? "food_court");
   const [fee, setFee] = useState(venue ? (venue.feeBps / 100).toFixed(1) : "1.0");
   const [errors, setErrors] = useState<{ name?: string; fee?: string }>({});
 
@@ -47,7 +54,7 @@ export function StepVenueForm({
     if (!/^\d+(\.\d{1,2})?$/.test(fee.trim()) || feeNum > 20) next.fee = "Enter a fee between 0 and 20%, up to 2 decimals.";
     setErrors(next);
     if (Object.keys(next).length) return;
-    onSubmit({ name: trimmed, currency: "AED", timezone: "Asia/Dubai", feeBps: Math.round(feeNum * 100) });
+    onSubmit({ name: trimmed, type, currency: "AED", timezone: "Asia/Dubai", feeBps: Math.round(feeNum * 100) });
   }
 
   return (
@@ -64,8 +71,14 @@ export function StepVenueForm({
         />
       </Field>
       <div className="grid grid-cols-2 gap-5">
-        <Field id="venue-type" label="Venue type" hint="Many vendors, shared seating, one QR per seat.">
-          <input id="venue-type" className={input} value="Food court" disabled />
+        <Field id="venue-type" label="Venue type" hint={TYPE_HINT[type]}>
+          <select id="venue-type" className={input} value={type} onChange={(e) => setType(e.target.value as VenueType)}>
+            {(Object.keys(VENUE_TYPE_LABEL) as VenueType[]).map((t) => (
+              <option key={t} value={t}>
+                {VENUE_TYPE_LABEL[t]}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field id="venue-currency" label="Currency">
           <select id="venue-currency" className={input} value="AED" disabled>

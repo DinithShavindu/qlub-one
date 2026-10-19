@@ -16,15 +16,18 @@ customer.get("/t/:qrToken", async (c) => {
   if (!table) throw new AppError("QR_NOT_FOUND", 404, "This QR isn't active. Ask staff for help.");
   const venue = await getVenue(table.venueId);
   ensureGuestToken(c);
-  const body: TableResolveResponse = { venue, table, vendors: await listVendors(venue.id) };
+  const vendors = (await listVendors(venue.id)).filter((v) => !table.vendorId || v.id === table.vendorId);
+  const body: TableResolveResponse = { venue, table, vendors };
   return c.json(body);
 });
 
-/** Merged menu: every vendor, categories in POS order. */
+/** Merged menu: every vendor, categories in POS order. `?table=` of an individual vendor QR → that vendor only. */
 customer.get("/venues/:venueId/menu", async (c) => {
   const venue = await getVenue(c.req.param("venueId"));
   if (venue.status !== "live") throw new AppError("VENUE_NOT_LIVE", 409, "Opening soon");
-  const vendors = await listVendors(venue.id);
+  const tableId = c.req.query("table");
+  const table = tableId ? await (await db()).tables.findOne({ id: tableId, venueId: venue.id }, NO_ID) : null;
+  const vendors = (await listVendors(venue.id)).filter((v) => !table?.vendorId || v.id === table.vendorId);
   const items = await listMenuItems(vendors.map((v) => v.id));
   const body: MenuResponse = {
     venue,

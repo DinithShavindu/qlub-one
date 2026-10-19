@@ -1,3 +1,7 @@
+import type { VenueType } from "@one/contracts";
+
+export const VENUE_TYPE_LABEL: Record<VenueType, string> = { food_court: "Food court", hotel: "Hotel" };
+
 /** 102 -> "01:42"; 3725 -> "1:02:05" — for the live setup timer chip. */
 export function formatTimer(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));

@@ -26,7 +26,7 @@ export default function LandingPage({ params }: { params: { qrToken: string } })
     // persist table after hydration so we don't clobber an in-progress cart
     if (store.persist.hasHydrated()) remember();
     else void Promise.resolve(store.persist.rehydrate()).then(remember);
-    void qc.prefetchQuery({ queryKey: qk.menu(venue.id), queryFn: () => fetchMenu(venue.id), staleTime: MENU_STALE_MS });
+    void qc.prefetchQuery({ queryKey: qk.menu(venue.id, table.id), queryFn: () => fetchMenu(venue.id, table.id), staleTime: MENU_STALE_MS });
     const t = setTimeout(
       () => router.replace(`/v/${venue.id}/menu?table=${encodeURIComponent(table.id)}`),
       SPLASH_MS,

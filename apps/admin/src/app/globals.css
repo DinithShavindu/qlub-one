@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Admin-only theme: qlub admin panel look (white surfaces, purple brand). Overrides @one/ui tokens. */
+:root {
+  --ink: 17 24 39;            /* #111827 */
+  --ink-soft: 55 65 81;       /* #374151 */
+  --ink-muted: 107 114 128;   /* #6B7280 */
+  --paper: 248 248 250;       /* #F8F8FA */
+  --surface: 255 255 255;     /* #FFFFFF */
+  --surface-sunk: 243 244 246;/* #F3F4F6 */
+  --line: 231 232 236;        /* #E7E8EC */
+  --brand: 80 66 230;         /* #5042E6 */
+  --brand-strong: 62 50 196;  /* #3E32C4 */
+  --on-brand: 255 255 255;
+  --status-new: 238 236 255;  --status-new-fg: 62 50 196;
+}
+
+@layer components {
+  /* Data tables: plain header row, roomy rows, hairline dividers. */
+  .data-table { @apply w-full text-left text-small; }
+  .data-table thead th { @apply whitespace-nowrap px-5 py-5 text-small font-semibold text-ink; }
+  .data-table tbody tr { @apply border-t border-line transition hover:bg-paper; }
+  .data-table tbody td { @apply px-5 py-4 align-middle; }
+}
+
 @media print {
   @page {
     size: A4;

@@ -99,7 +99,7 @@ export async function ensureIndexes(): Promise<void> {
     c.vendors.createIndex({ venueId: 1, sortOrder: 1 }),
     c.tables.createIndex({ id: 1 }, { unique: true }),
     c.tables.createIndex({ qrToken: 1 }, { unique: true }),
-    c.tables.createIndex({ venueId: 1 }),
+    c.tables.createIndex({ venueId: 1, vendorId: 1 }),
     c.menuItems.createIndex({ id: 1 }, { unique: true }),
     c.menuItems.createIndex({ vendorId: 1, posItemId: 1 }, { unique: true }),
     c.masterOrders.createIndex({ id: 1 }, { unique: true }),

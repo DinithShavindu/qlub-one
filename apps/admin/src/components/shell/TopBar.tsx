@@ -1,54 +1,107 @@
 "use client";
-import { useRouter } from "next/navigation";
-import { Skeleton } from "@one/ui";
-import { useVenues } from "@/lib/queries";
+import { cx } from "@/lib/cx";
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Building2, LayoutDashboard, Plus, QrCode, Receipt, Rocket, Search, Store } from "lucide-react";
+import { useVenue } from "@/lib/queries";
 import { useCurrentVenueId } from "./use-current-venue-id";
-import { VenueStatusPill } from "./VenueStatusPill";
+import { VenueSwitcher } from "./VenueSwitcher";
+
+function Tab({ href, active, icon, children }: { href: string; active: boolean; icon: ReactNode; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cx(
+        "-mb-px flex h-full items-center gap-2 whitespace-nowrap border-b-2 px-1 text-body transition",
+        active ? "border-brand font-semibold text-brand" : "border-transparent text-ink-soft hover:text-ink",
+      )}
+    >
+      <span aria-hidden>{icon}</span>
+      {children}
+    </Link>
+  );
+}
 
 export function TopBar() {
-  const router = useRouter();
+  const pathname = usePathname();
   const venueId = useCurrentVenueId();
-  const venues = useVenues();
-  const current = venues.data?.venues.find((v) => v.venue.id === venueId)?.venue;
+  const venue = useVenue(venueId);
+  const [switcher, setSwitcher] = useState(false);
+  const inVenue = !!venueId && !pathname.startsWith("/venues/new");
+  const isDraft = venue.data?.venue.status === "draft";
+  const icon = "h-[18px] w-[18px]";
 
-  function go(id: string) {
-    const v = venues.data?.venues.find((x) => x.venue.id === id)?.venue;
-    if (!v) return;
-    router.push(v.status === "live" ? `/venues/${v.id}` : `/venues/new?id=${v.id}`);
-  }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSwitcher(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
-    <header className="no-print sticky top-0 z-20 border-b border-line bg-paper/95 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-admin items-center gap-4 px-8">
-        <label htmlFor="venue-switcher" className="text-small font-semibold text-ink-muted">
-          Venue
-        </label>
-        {venues.isPending ? (
-          <Skeleton className="h-10 w-72" />
-        ) : (
-          <select
-            id="venue-switcher"
-            value={current?.id ?? ""}
-            onChange={(e) => go(e.target.value)}
-            className="h-10 w-72 rounded-md border border-line bg-surface px-3 text-small font-semibold"
+    <header className="no-print sticky top-0 z-20 border-b border-line bg-surface">
+      <div className="flex h-[78px] items-center gap-8 px-10">
+        <nav className="flex h-full items-center gap-7 overflow-x-auto" aria-label="Section">
+          {inVenue ? (
+            <>
+              <Tab href={`/venues/${venueId}`} active={pathname === `/venues/${venueId}`} icon={<LayoutDashboard className={icon} />}>
+                Dashboard
+              </Tab>
+              <Tab href={`/venues/${venueId}/vendors`} active={pathname.endsWith("/vendors")} icon={<Store className={icon} />}>
+                Vendors
+              </Tab>
+              <Tab href={`/venues/${venueId}/tables`} active={pathname.endsWith("/tables")} icon={<QrCode className={icon} />}>
+                QR Manager
+              </Tab>
+              <Tab href={`/venues/${venueId}/settlements`} active={pathname.endsWith("/settlements")} icon={<Receipt className={icon} />}>
+                Settlements
+              </Tab>
+              {isDraft && (
+                <Tab href={`/venues/new?id=${venueId}`} active={false} icon={<Rocket className={icon} />}>
+                  Continue setup
+                </Tab>
+              )}
+            </>
+          ) : (
+            <>
+              <Tab href="/venues" active={pathname === "/venues"} icon={<Building2 className={icon} />}>
+                Venues
+              </Tab>
+              <Tab href="/qrs" active={pathname.startsWith("/qrs")} icon={<QrCode className={icon} />}>
+                QR Manager
+              </Tab>
+              <Tab href="/venues/new" active={pathname.startsWith("/venues/new")} icon={<Plus className={icon} />}>
+                New venue
+              </Tab>
+            </>
+          )}
+        </nav>
+
+        <div className="ml-auto flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setSwitcher(true)}
+            className="flex h-12 items-center gap-3 rounded-full border border-line pl-4 pr-2 text-body text-ink-soft transition hover:border-ink-muted"
           >
-            <option value="" disabled>
-              {venues.isError ? "Couldn't load venues" : "Select a venue…"}
-            </option>
-            {venues.data?.venues.map(({ venue }) => (
-              <option key={venue.id} value={venue.id}>
-                {venue.name} · {venue.status === "live" ? "Live" : "Draft"}
-              </option>
-            ))}
-          </select>
-        )}
-        {current && <VenueStatusPill status={current.status} />}
-        {current && (
-          <span className="ml-auto text-small text-ink-muted">
-            Venue code <span className="font-display font-bold text-ink">{current.code}</span>
+            <Search className="h-5 w-5" aria-hidden />
+            <span className="max-w-[200px] truncate">{inVenue && venue.data ? venue.data.venue.name : "Search"}</span>
+            <span className="flex gap-1" aria-hidden>
+              <kbd className="flex h-7 w-7 items-center justify-center rounded-md border border-line text-micro">⌘</kbd>
+              <kbd className="flex h-7 w-7 items-center justify-center rounded-md border border-line text-micro">K</kbd>
+            </span>
+          </button>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-muted/60 text-body font-semibold text-white" aria-label="Signed in as admin">
+            A
           </span>
-        )}
+        </div>
       </div>
+      <VenueSwitcher open={switcher} onClose={() => setSwitcher(false)} />
     </header>
   );
 }

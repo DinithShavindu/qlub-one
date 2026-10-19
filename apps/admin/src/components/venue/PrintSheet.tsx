@@ -6,8 +6,11 @@ import type { TableWithUrl } from "@one/contracts";
 
 const PER_PAGE = 12;
 
+/** `venueName` per card when the sheet mixes venues (QR Manager export). */
+export type PrintTable = TableWithUrl & { venueName?: string };
+
 /** A4 sheets, 12 QR cards per page (3 × 4). Opens the print dialog once the QR SVGs have rendered. */
-export function PrintSheet({ venueName, tables, autoPrint = true }: { venueName: string; tables: TableWithUrl[]; autoPrint?: boolean }) {
+export function PrintSheet({ venueName, tables, autoPrint = true }: { venueName: string; tables: PrintTable[]; autoPrint?: boolean }) {
   const printed = useRef(false);
   useEffect(() => {
     if (!autoPrint || printed.current || !tables.length) return;
@@ -16,7 +19,7 @@ export function PrintSheet({ venueName, tables, autoPrint = true }: { venueName:
     return () => clearTimeout(t);
   }, [autoPrint, tables.length]);
 
-  const pages: TableWithUrl[][] = [];
+  const pages: PrintTable[][] = [];
   for (let i = 0; i < tables.length; i += PER_PAGE) pages.push(tables.slice(i, i + PER_PAGE));
 
   return (
@@ -40,7 +43,7 @@ export function PrintSheet({ venueName, tables, autoPrint = true }: { venueName:
             {page.map((t) => (
               <QrCard
                 key={t.id}
-                venueName={venueName}
+                venueName={t.venueName ?? venueName}
                 tableLabel={t.label}
                 url={t.url}
                 className="justify-center gap-1 rounded-md p-2 [&>div:first-child]:max-w-[38mm]"

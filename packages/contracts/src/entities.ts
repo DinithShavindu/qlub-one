@@ -3,6 +3,9 @@ import { z } from "zod";
 export const IsoDate = z.string();
 
 export const VenueStatus = z.enum(["draft", "live"]);
+/** Multivendor venue kinds. Both group many vendors under one venue, one QR set, one settlement. */
+export const VenueType = z.enum(["food_court", "hotel"]);
+export type VenueType = z.infer<typeof VenueType>;
 export const PosMode = z.enum(["mock_pos", "tablet"]);
 export type PosMode = z.infer<typeof PosMode>;
 
@@ -16,7 +19,7 @@ export const Venue = z.object({
   slug: z.string(),
   /** Short uppercase code staff type on the vendor login screen, e.g. "HARBOUR". */
   code: z.string(),
-  type: z.literal("food_court"),
+  type: VenueType,
   currency: z.string(),
   timezone: z.string(),
   feeBps: z.number().int(),
@@ -47,6 +50,8 @@ export const Table = z.object({
   venueId: z.string(),
   label: z.string(),
   qrToken: z.string(),
+  /** Set = an individual vendor's QR (scan opens only that vendor). Null/missing = shared venue QR, every vendor. */
+  vendorId: z.string().nullable().optional(),
 });
 export type Table = z.infer<typeof Table>;
 

@@ -13,6 +13,7 @@ import {
   VendorOrder,
   VendorOrderStatus,
   Venue,
+  VenueType,
 } from "./entities";
 
 /* ───────────── Customer ───────────── */
@@ -151,6 +152,7 @@ export const AdminLoginRequest = z.object({ password: z.string().min(1) });
 
 export const CreateVenueRequest = z.object({
   name: z.string().trim().min(2).max(60),
+  type: VenueType.default("food_court"),
   currency: z.string().length(3).default("AED"),
   timezone: z.string().default("Asia/Dubai"),
   feeBps: z.number().int().min(0).max(2000).default(100),
@@ -204,6 +206,8 @@ export type MenuSyncResponse = z.infer<typeof MenuSyncResponse>;
 export const CreateTablesRequest = z.object({
   count: z.number().int().min(1).max(200),
   prefix: z.string().trim().min(0).max(6).default("T"),
+  /** Create QRs for one vendor only. Omitted = shared venue QRs. */
+  vendorId: z.string().min(1).optional(),
 });
 export type CreateTablesRequest = z.infer<typeof CreateTablesRequest>;
 
@@ -211,6 +215,48 @@ export const TableWithUrl = Table.extend({ url: z.string() });
 export type TableWithUrl = z.infer<typeof TableWithUrl>;
 export const TablesResponse = z.object({ tables: z.array(TableWithUrl) });
 export type TablesResponse = z.infer<typeof TablesResponse>;
+
+/** Comma-separated query value -> trimmed, non-empty list. */
+const csv = z
+  .string()
+  .optional()
+  .transform((s) => (s ? s.split(",").map((x) => x.trim()).filter(Boolean) : undefined));
+
+/** `GET /v1/admin/qr/list` — QRs across venues. No venue filter = every venue combined. */
+export const QrListQuery = z.object({
+  /** Venue code or slug, e.g. `HARBOUR` or `harbour-food-hall-demo`. */
+  venue: z.string().trim().min(1).optional(),
+  venueIds: csv,
+  /**
+   * Omitted = combined (every QR). `shared` = venue-wide QRs only, `individual` = vendor QRs only,
+   * otherwise one vendor: its id, or its slug together with `venue`.
+   */
+  vendor: z.string().trim().min(1).optional(),
+  /** Only these table ids (export of a selection). */
+  ids: csv,
+  tableName: z.string().trim().max(40).optional(),
+  tableId: z.string().trim().max(40).optional(),
+  /** 0-based. */
+  page: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+});
+export type QrListQuery = z.infer<typeof QrListQuery>;
+
+export const QrListRow = TableWithUrl.extend({
+  venue: Venue.pick({ id: true, name: true, code: true, slug: true, type: true }),
+  /** Null for a shared venue QR. */
+  vendor: Vendor.pick({ id: true, name: true, slug: true, emoji: true }).nullable(),
+});
+export type QrListRow = z.infer<typeof QrListRow>;
+
+export const QrListResponse = z.object({
+  rows: z.array(QrListRow),
+  /** Total matching rows across all pages. */
+  count: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+});
+export type QrListResponse = z.infer<typeof QrListResponse>;
 
 export const GoLiveResponse = z.object({
   venue: Venue,

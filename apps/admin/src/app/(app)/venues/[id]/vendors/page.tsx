@@ -44,7 +44,7 @@ export default function VendorsPage() {
       {venue.status === "draft" && <DraftBanner venueId={id} />}
       <PageHeader title="Vendors" subtitle={`${venue.name} · ${vendors.length} vendors, one venue`} />
 
-      <div className="mb-6 flex items-center gap-6 rounded-lg border border-line bg-surface px-5 py-4">
+      <div className="mb-6 flex items-center gap-6 rounded-2xl border border-line bg-surface px-6 py-5">
         <div>
           <p className="text-micro font-semibold uppercase text-ink-muted">Venue code</p>
           <p className="select-all font-display text-display font-bold tracking-wider">{venue.code}</p>
@@ -64,25 +64,25 @@ export default function VendorsPage() {
             action={<ButtonLink href={`/venues/new?id=${id}`}>Add vendors</ButtonLink>}
           />
         ) : (
-          <table className="w-full text-left text-small">
-            <thead className="border-b border-line bg-surface-sunk text-micro uppercase text-ink-muted">
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-4 py-2.5 font-semibold">Vendor</th>
-                <th className="px-4 py-2.5 font-semibold">Pickup letter</th>
-                <th className="px-4 py-2.5 font-semibold">Mode</th>
-                <th className="px-4 py-2.5 text-right font-semibold">Menu items</th>
-                <th className="px-4 py-2.5 font-semibold">Status</th>
-                <th className="px-4 py-2.5" />
+                <th className="font-semibold">Vendor</th>
+                <th className="font-semibold">Pickup letter</th>
+                <th className="font-semibold">Mode</th>
+                <th className="text-right font-semibold">Menu items</th>
+                <th className="font-semibold">Status</th>
+                <th />
               </tr>
             </thead>
             <tbody>
               {vendors.map((v) => (
-                <tr key={v.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-2.5">
+                <tr key={v.id}>
+                  <td>
                     <VendorBadge vendor={v} />
                   </td>
-                  <td className="px-4 py-2.5 font-display font-bold">{v.letter}-##</td>
-                  <td className="px-4 py-2.5 text-ink-soft">
+                  <td className="font-display font-bold">{v.letter}-##</td>
+                  <td className="text-ink-soft">
                     {v.posMode === "mock_pos" ? (
                       <>
                         Mock POS <span className="font-mono text-micro text-ink-muted">{v.posVendorId}</span>
@@ -91,13 +91,13 @@ export default function VendorsPage() {
                       "Tablet (KDS)"
                     )}
                   </td>
-                  <td className={`px-4 py-2.5 text-right tabular-nums ${v.itemCount === 0 ? "font-semibold text-status-failed-fg" : ""}`}>
+                  <td className={`text-right tabular-nums ${v.itemCount === 0 ? "font-semibold text-status-failed-fg" : ""}`}>
                     {v.itemCount === 0 ? "0 — no menu" : v.itemCount}
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td>
                     <OpenToggle vendor={v} venueId={id} />
                   </td>
-                  <td className="px-4 py-2.5 text-right">
+                  <td className="text-right">
                     <Button variant="secondary" size="sm" onClick={() => setConfirm(v)}>
                       <KeyRound className="h-4 w-4" aria-hidden /> Reset PIN
                     </Button>

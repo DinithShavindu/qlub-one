@@ -12,7 +12,7 @@ import { apiFetch } from "@one/ui";
 /** TanStack Query keys (DESIGN.md §6). */
 export const qk = {
   table: (qrToken: string) => ["table", qrToken] as const,
-  menu: (venueId: string) => ["menu", venueId] as const,
+  menu: (venueId: string, tableId?: string | null) => ["menu", venueId, tableId ?? ""] as const,
   quote: (venueId: string, signature: string) => ["quote", venueId, signature] as const,
   order: (masterOrderId: string) => ["order", masterOrderId] as const,
 };
@@ -22,8 +22,9 @@ export const MENU_STALE_MS = 60_000;
 export const resolveTable = (qrToken: string) =>
   apiFetch<TableResolveResponse>(`/v1/t/${encodeURIComponent(qrToken)}`);
 
-export const fetchMenu = (venueId: string) =>
-  apiFetch<MenuResponse>(`/v1/venues/${encodeURIComponent(venueId)}/menu`);
+/** `tableId` scopes the menu to one vendor when the guest scanned that vendor's own QR. */
+export const fetchMenu = (venueId: string, tableId?: string | null) =>
+  apiFetch<MenuResponse>(`/v1/venues/${encodeURIComponent(venueId)}/menu${tableId ? `?table=${encodeURIComponent(tableId)}` : ""}`);
 
 export const postQuote = (body: QuoteRequest) =>
   apiFetch<QuoteResponse>("/v1/checkout/quote", { method: "POST", json: body });

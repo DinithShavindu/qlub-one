@@ -6,6 +6,7 @@ import {
   CreateTablesRequest,
   CreateVenueRequest,
   MenuSyncRequest,
+  QrListQuery,
   SetVendorOpenRequest,
   SettlementsQuery,
   UpdateVenueRequest,
@@ -15,11 +16,13 @@ import {
   type GoLiveResponse,
   type MenuSyncResponse,
   type PosVendorsResponse,
+  type QrListResponse,
+  type QrListRow,
   type ResetPinResponse,
   type TablesResponse,
   type Venue,
 } from "@one/contracts";
-import { db, newId, newPin, newQrToken, NO_ID, type VendorDoc } from "@one/db";
+import { COLLECTION_NAMES, db, newId, newPin, newQrToken, NO_ID, type VendorDoc } from "@one/db";
 import { mockPosAdapter } from "../adapters";
 import { config } from "../config";
 import { clearAdminSession, requireAdmin, safeEqual, setAdminSession } from "../lib/auth";
@@ -86,7 +89,7 @@ admin.post("/admin/venues", async (c) => {
     name: req.name,
     slug: uniqueSlug(req.name, usedSlugs),
     code,
-    type: "food_court",
+    type: req.type,
     currency: req.currency,
     timezone: req.timezone,
     feeBps: req.feeBps,
@@ -244,16 +247,23 @@ admin.get("/admin/venues/:id/tables", async (c) => {
 /** Draft venue: replaces the table set. Live venue: appends (existing printed QRs keep working). */
 admin.post("/admin/venues/:id/tables", async (c) => {
   const venue = await getVenue(c.req.param("id"));
-  const { count, prefix } = parse(CreateTablesRequest, await c.req.json().catch(() => null));
+  const { count, prefix, vendorId } = parse(CreateTablesRequest, await c.req.json().catch(() => null));
   const d = await db();
+  if (vendorId) {
+    const vendor = await d.vendors.findOne({ id: vendorId, venueId: venue.id }, NO_ID);
+    if (!vendor) throw new AppError("VALIDATION_ERROR", 400, "That vendor isn't part of this venue");
+  }
+  // shared QRs and each vendor's QRs are numbered (and, for drafts, replaced) independently
+  const scope = { venueId: venue.id, vendorId: vendorId ?? null };
   let start = 1;
-  if (venue.status === "draft") await d.tables.deleteMany({ venueId: venue.id });
-  else start = (await d.tables.countDocuments({ venueId: venue.id })) + 1;
+  if (venue.status === "draft") await d.tables.deleteMany(scope);
+  else start = (await d.tables.countDocuments(scope)) + 1;
   const tables = Array.from({ length: count }, (_, i) => ({
     id: newId("tbl"),
     venueId: venue.id,
     label: `${prefix}${start + i}`,
     qrToken: newQrToken(),
+    vendorId: vendorId ?? null,
   }));
   await d.tables.insertMany(tables.map((t) => ({ ...t })));
   await completeStep(venue.id, "tables");
@@ -261,6 +271,96 @@ admin.post("/admin/venues/:id/tables", async (c) => {
   all.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
   const body: TablesResponse = { tables: all.map((t) => ({ ...t, url: tableUrl(t.qrToken) })) };
   return c.json(body, 201);
+});
+
+/* ── QR manager (all venues) ── */
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * QRs across venues: one venue (`venue` = code or slug), a subset (`venueIds`), or every venue combined.
+ * Sorted by venue name then table label (numeric-aware), paginated over the combined result.
+ */
+admin.get("/admin/qr/list", async (c) => {
+  const q = parse(QrListQuery, c.req.query());
+  const d = await db();
+
+  const match: Record<string, unknown> = {};
+  if (q.venue) {
+    const venue = await d.venues.findOne({ $or: [{ code: q.venue.toUpperCase() }, { slug: q.venue.toLowerCase() }] }, NO_ID);
+    if (!venue) throw new AppError("VALIDATION_ERROR", 400, `No venue with code or slug "${q.venue}"`);
+    if (q.venueIds && !q.venueIds.includes(venue.id)) throw new AppError("VALIDATION_ERROR", 400, `"${q.venue}" is not in the selected venues`);
+    match.venueId = venue.id;
+  } else if (q.venueIds) {
+    match.venueId = { $in: q.venueIds };
+  }
+  if (q.vendor === "shared") match.vendorId = null;
+  else if (q.vendor === "individual") match.vendorId = { $type: "string" };
+  else if (q.vendor) {
+    const venueId = typeof match.venueId === "string" ? match.venueId : undefined;
+    const vendor = await d.vendors.findOne(
+      { $or: [{ id: q.vendor }, ...(venueId ? [{ venueId, slug: q.vendor.toLowerCase() }] : [])] },
+      NO_ID,
+    );
+    if (!vendor || (venueId && vendor.venueId !== venueId)) {
+      throw new AppError("VALIDATION_ERROR", 400, `"${q.vendor}" is not a vendor of ${venueId ? "this venue" : "any venue (pass venue= to use a slug)"}`);
+    }
+    match.vendorId = vendor.id;
+  }
+  if (q.ids) match.id = { $in: q.ids };
+  if (q.tableName) match.label = { $regex: escapeRegex(q.tableName), $options: "i" };
+  if (q.tableId) match.qrToken = { $regex: escapeRegex(q.tableId), $options: "i" };
+
+  const [res] = await d.tables
+    .aggregate<{ rows: Omit<QrListRow, "url">[]; total: { n: number }[] }>(
+      [
+        { $match: match },
+        { $lookup: { from: COLLECTION_NAMES.venues, localField: "venueId", foreignField: "id", as: "venue" } },
+        { $unwind: "$venue" },
+        { $lookup: { from: COLLECTION_NAMES.vendors, localField: "vendorId", foreignField: "id", as: "vendor" } },
+        { $unwind: { path: "$vendor", preserveNullAndEmptyArrays: true } },
+        // shared venue QRs first, then each vendor in its venue order
+        { $addFields: { vendorSort: { $ifNull: ["$vendor.sortOrder", -1] } } },
+        { $sort: { "venue.name": 1, vendorSort: 1, label: 1, id: 1 } },
+        {
+          $facet: {
+            rows: [
+              { $skip: q.page * q.limit },
+              { $limit: q.limit },
+              {
+                $project: {
+                  _id: 0,
+                  id: 1,
+                  venueId: 1,
+                  label: 1,
+                  qrToken: 1,
+                  venue: { id: "$venue.id", name: "$venue.name", code: "$venue.code", slug: "$venue.slug", type: "$venue.type" },
+                  vendorId: { $ifNull: ["$vendorId", null] },
+                  vendor: {
+                    $cond: [
+                      { $ifNull: ["$vendor.id", false] },
+                      { id: "$vendor.id", name: "$vendor.name", slug: "$vendor.slug", emoji: "$vendor.emoji" },
+                      null,
+                    ],
+                  },
+                },
+              },
+            ],
+            total: [{ $count: "n" }],
+          },
+        },
+      ],
+      { collation: { locale: "en", numericOrdering: true } },
+    )
+    .toArray();
+
+  const body: QrListResponse = {
+    rows: (res?.rows ?? []).map((t) => ({ ...t, url: tableUrl(t.qrToken) })),
+    count: res?.total[0]?.n ?? 0,
+    page: q.page,
+    limit: q.limit,
+  };
+  return c.json(body);
 });
 
 /* ── go live ── */

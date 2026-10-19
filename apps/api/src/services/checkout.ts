@@ -18,7 +18,8 @@ export async function quote(req: QuoteRequest): Promise<{ venue: Venue; priced: 
   const venue = await getVenue(req.venueId);
   const table = await getTable(req.tableId);
   if (table.venueId !== venue.id) throw new AppError("NOT_FOUND", 404, "Table not found at this venue");
-  const vendors = await listVendors(venue.id);
+  // an individual vendor QR can only order from that vendor
+  const vendors = (await listVendors(venue.id)).filter((v) => !table.vendorId || v.id === table.vendorId);
   const c = await db();
   const ids = [...new Set(req.lines.map((l) => l.menuItemId))];
   const items = (await c.menuItems.find({ id: { $in: ids } }, NO_ID).toArray()) as MenuItem[];
