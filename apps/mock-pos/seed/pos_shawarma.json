@@ -1,0 +1,30 @@
+{
+  "posVendorId": "pos_shawarma",
+  "displayName": "Shawarma Station",
+  "emoji": "🌯",
+  "store": { "name": "Shawarma Station", "currency": "AED", "address": "Unit 3, Harbour Food Hall (fictional)" },
+  "groups": [
+    { "groupName": "Wraps", "products": [
+      { "sku": "sh_001", "title": "Chicken shawarma", "desc": "Marinated chicken, garlic toum, pickles, fries inside, saj bread.", "price": "18.00", "soldOut": false },
+      { "sku": "sh_002", "title": "Beef shawarma", "desc": "Spiced beef, tahini, onion-sumac, tomato.", "price": "22.00", "soldOut": false },
+      { "sku": "sh_003", "title": "Falafel wrap", "desc": "Crispy falafel, tahini, parsley, turnip pickles.", "price": "15.00", "soldOut": false },
+      { "sku": "sh_004", "title": "Halloumi wrap", "desc": "Grilled halloumi, za'atar, tomato, mint.", "price": "17.50", "soldOut": false }
+    ]},
+    { "groupName": "Plates", "products": [
+      { "sku": "sh_005", "title": "Chicken shawarma plate", "desc": "Sliced chicken, rice, salad, toum, bread.", "price": "32.00", "soldOut": false },
+      { "sku": "sh_006", "title": "Mixed grill plate", "desc": "Shish tawook, kofta, lamb tikka, grilled veg.", "price": "45.00", "soldOut": false },
+      { "sku": "sh_007", "title": "Falafel plate", "desc": "Six falafel, hummus, salad, pickles.", "price": "26.00", "soldOut": false }
+    ]},
+    { "groupName": "Sides", "products": [
+      { "sku": "sh_008", "title": "Fries", "desc": "Crispy fries with garlic dip.", "price": "9.00", "soldOut": false },
+      { "sku": "sh_009", "title": "Hummus", "desc": "Chickpea, tahini, olive oil, warm bread.", "price": "12.00", "soldOut": false },
+      { "sku": "sh_010", "title": "Fattoush", "desc": "Crunchy bread salad, pomegranate molasses.", "price": "14.00", "soldOut": false },
+      { "sku": "sh_011", "title": "Moutabal", "desc": "Smoky aubergine dip.", "price": "12.50", "soldOut": false }
+    ]},
+    { "groupName": "Drinks", "products": [
+      { "sku": "sh_012", "title": "Ayran", "desc": "Salted yoghurt drink.", "price": "6.00", "soldOut": false },
+      { "sku": "sh_013", "title": "Mint lemonade", "desc": "Fresh lemon, mint, crushed ice.", "price": "12.00", "soldOut": false },
+      { "sku": "sh_014", "title": "Water", "desc": "Still, 500ml.", "price": "3.00", "soldOut": false }
+    ]}
+  ]
+}

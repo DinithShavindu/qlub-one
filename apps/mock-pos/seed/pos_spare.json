@@ -1,0 +1,26 @@
+{
+  "posVendorId": "pos_spare",
+  "displayName": "Noodle Bar",
+  "emoji": "🍜",
+  "store": { "name": "Noodle Bar", "currency": "AED", "address": "Unit 14, Harbour Food Hall (fictional)" },
+  "groups": [
+    { "groupName": "Noodles", "products": [
+      { "sku": "nb_001", "title": "Chicken ramen", "desc": "Rich chicken broth, egg, nori, bamboo.", "price": "38.00", "soldOut": false },
+      { "sku": "nb_002", "title": "Beef pho", "desc": "Rice noodles, star-anise broth, herbs.", "price": "36.00", "soldOut": false },
+      { "sku": "nb_003", "title": "Pad thai", "desc": "Rice noodles, tamarind, peanuts, prawns.", "price": "34.00", "soldOut": false },
+      { "sku": "nb_004", "title": "Veg yaki udon", "desc": "Stir-fried udon, mushrooms, cabbage.", "price": "29.00", "soldOut": false },
+      { "sku": "nb_005", "title": "Dan dan noodles", "desc": "Sesame chilli sauce, minced chicken.", "price": "31.00", "soldOut": false }
+    ]},
+    { "groupName": "Small plates", "products": [
+      { "sku": "nb_006", "title": "Spring rolls (4 pcs)", "desc": "Vegetable, sweet chilli dip.", "price": "16.00", "soldOut": false },
+      { "sku": "nb_007", "title": "Bao bun (2 pcs)", "desc": "Crispy chicken, pickles, hoisin.", "price": "22.00", "soldOut": false },
+      { "sku": "nb_008", "title": "Prawn crackers", "desc": "With chilli mayo.", "price": "8.00", "soldOut": false },
+      { "sku": "nb_009", "title": "Kimchi", "desc": "House fermented.", "price": "9.00", "soldOut": false }
+    ]},
+    { "groupName": "Drinks", "products": [
+      { "sku": "nb_010", "title": "Thai iced tea", "desc": "Sweet, creamy, iced.", "price": "14.00", "soldOut": false },
+      { "sku": "nb_011", "title": "Lychee soda", "desc": "Sparkling, lime.", "price": "12.00", "soldOut": false },
+      { "sku": "nb_012", "title": "Jasmine tea", "desc": "Hot pot.", "price": "10.00", "soldOut": false }
+    ]}
+  ]
+}

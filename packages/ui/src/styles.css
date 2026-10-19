@@ -1,0 +1,68 @@
+/* Design tokens (docs/DESIGN_SYSTEM.md §2). Space-separated RGB so Tailwind opacity works. */
+:root {
+  --ink: 18 22 31;            /* #12161F */
+  --ink-soft: 62 69 83;       /* #3E4553 */
+  --ink-muted: 107 114 128;   /* #6B7280 */
+  --paper: 246 244 239;       /* #F6F4EF */
+  --surface: 255 253 248;     /* #FFFDF8 */
+  --surface-sunk: 236 232 223;/* #ECE8DF */
+  --line: 226 221 210;        /* #E2DDD2 */
+  --brand: 226 103 43;        /* #E2672B */
+  --brand-strong: 185 80 28;  /* #B9501C */
+  --on-brand: 18 22 31;       /* #12161F */
+
+  --status-new: 220 231 247;      --status-new-fg: 30 78 140;
+  --status-prep: 251 227 213;     --status-prep-fg: 138 54 18;
+  --status-ready: 30 78 140;      --status-ready-fg: 255 255 255;
+  --status-done: 236 232 223;     --status-done-fg: 62 69 83;
+  --status-failed: 253 226 225;   --status-failed-fg: 155 28 28;
+
+  --vendor-1: 47 93 168;   /* #2F5DA8 */
+  --vendor-2: 185 80 28;   /* #B9501C */
+  --vendor-3: 46 125 91;   /* #2E7D5B */
+  --vendor-4: 122 79 181;  /* #7A4FB5 */
+  --vendor-5: 160 120 42;  /* #A0782A */
+  --vendor-6: 62 69 83;    /* #3E4553 */
+  color-scheme: light;
+}
+
+.dark {
+  --ink: 246 244 239;
+  --ink-soft: 201 205 214;
+  --ink-muted: 154 161 174;
+  --paper: 18 22 31;
+  --surface: 28 34 48;
+  --surface-sunk: 13 16 23;
+  --line: 42 49 66;
+  --brand: 240 162 122;
+  --brand-strong: 240 162 122;
+  --on-brand: 18 22 31;
+  --vendor-1: 122 160 224;
+  --vendor-2: 240 162 122;
+  --vendor-3: 110 196 155;
+  --vendor-4: 178 145 226;
+  --vendor-5: 214 178 102;
+  --vendor-6: 201 205 214;
+  /* status fills tuned for dark surfaces; still differ in lightness + always labelled */
+  --status-new: 30 58 99;         --status-new-fg: 191 214 247;
+  --status-prep: 92 45 20;        --status-prep-fg: 251 211 187;
+  --status-ready: 122 160 224;    --status-ready-fg: 18 22 31;
+  --status-done: 42 49 66;        --status-done-fg: 201 205 214;
+  --status-failed: 94 28 28;      --status-failed-fg: 254 202 202;
+  color-scheme: dark;
+}
+
+html, body { background: rgb(var(--paper)); color: rgb(var(--ink)); }
+body { font-family: var(--font-text), ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+.tabular, [data-tabular] { font-variant-numeric: tabular-nums; }
+
+:focus-visible { outline: 2px solid rgb(var(--brand-strong)); outline-offset: 2px; border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  html, body { background: white !important; }
+}

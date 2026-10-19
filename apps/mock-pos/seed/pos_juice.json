@@ -1,0 +1,24 @@
+{
+  "posVendorId": "pos_juice",
+  "displayName": "Fresh Press Juice",
+  "emoji": "🥤",
+  "store": { "name": "Fresh Press Juice", "currency": "AED", "address": "Unit 11, Harbour Food Hall (fictional)" },
+  "groups": [
+    { "groupName": "Juices", "products": [
+      { "sku": "fj_001", "title": "Orange juice", "desc": "Freshly pressed, 350ml.", "price": "14.00", "soldOut": false },
+      { "sku": "fj_002", "title": "Green detox", "desc": "Apple, cucumber, celery, spinach, lemon.", "price": "19.00", "soldOut": false },
+      { "sku": "fj_003", "title": "Watermelon mint", "desc": "Watermelon, mint, lime.", "price": "16.00", "soldOut": false },
+      { "sku": "fj_004", "title": "Carrot ginger", "desc": "Carrot, orange, ginger kick.", "price": "17.00", "soldOut": false }
+    ]},
+    { "groupName": "Smoothies", "products": [
+      { "sku": "fj_005", "title": "Mango lassi smoothie", "desc": "Mango, yoghurt, cardamom.", "price": "18.00", "soldOut": false },
+      { "sku": "fj_006", "title": "Berry blast", "desc": "Strawberry, blueberry, banana, oat milk.", "price": "21.00", "soldOut": false },
+      { "sku": "fj_007", "title": "Date & banana", "desc": "Medjool dates, banana, milk, cinnamon.", "price": "19.50", "soldOut": false }
+    ]},
+    { "groupName": "Bowls", "products": [
+      { "sku": "fj_008", "title": "Açaí bowl", "desc": "Açaí, granola, banana, berries, honey.", "price": "32.00", "soldOut": false },
+      { "sku": "fj_009", "title": "Pitaya bowl", "desc": "Dragon fruit, coconut, kiwi, seeds.", "price": "34.00", "soldOut": false },
+      { "sku": "fj_010", "title": "Fruit cup", "desc": "Seasonal cut fruit.", "price": "15.00", "soldOut": false }
+    ]}
+  ]
+}

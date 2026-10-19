@@ -1,0 +1,32 @@
+{
+  "posVendorId": "pos_sushi",
+  "displayName": "Sushi Corner",
+  "emoji": "🍣",
+  "store": { "name": "Sushi Corner", "currency": "AED", "address": "Unit 7, Harbour Food Hall (fictional)" },
+  "groups": [
+    { "groupName": "Rolls", "products": [
+      { "sku": "su_001", "title": "California roll (8 pcs)", "desc": "Crab stick, avocado, cucumber, tobiko.", "price": "28.00", "soldOut": false },
+      { "sku": "su_002", "title": "Spicy salmon roll (8 pcs)", "desc": "Salmon, spicy mayo, spring onion.", "price": "34.00", "soldOut": false },
+      { "sku": "su_003", "title": "Dragon roll (8 pcs)", "desc": "Prawn tempura, eel, avocado, unagi sauce.", "price": "42.00", "soldOut": false },
+      { "sku": "su_004", "title": "Veggie roll (8 pcs)", "desc": "Cucumber, avocado, pickled radish, sesame.", "price": "22.00", "soldOut": false },
+      { "sku": "su_005", "title": "Crunchy prawn roll (8 pcs)", "desc": "Prawn tempura, tempura flakes, sweet chilli.", "price": "36.00", "soldOut": false }
+    ]},
+    { "groupName": "Nigiri", "products": [
+      { "sku": "su_006", "title": "Salmon nigiri (2 pcs)", "desc": "Norwegian salmon over seasoned rice.", "price": "16.00", "soldOut": false },
+      { "sku": "su_007", "title": "Tuna nigiri (2 pcs)", "desc": "Yellowfin tuna over seasoned rice.", "price": "18.00", "soldOut": false },
+      { "sku": "su_008", "title": "Ebi nigiri (2 pcs)", "desc": "Poached prawn.", "price": "14.00", "soldOut": false },
+      { "sku": "su_009", "title": "Tamago nigiri (2 pcs)", "desc": "Sweet rolled omelette.", "price": "10.00", "soldOut": false }
+    ]},
+    { "groupName": "Bowls", "products": [
+      { "sku": "su_010", "title": "Salmon poke bowl", "desc": "Salmon, edamame, mango, sushi rice, ponzu.", "price": "45.00", "soldOut": false },
+      { "sku": "su_011", "title": "Chicken teriyaki bowl", "desc": "Glazed chicken, rice, broccoli, sesame.", "price": "38.00", "soldOut": false },
+      { "sku": "su_012", "title": "Tofu donburi", "desc": "Crispy tofu, egg, rice, dashi glaze.", "price": "32.00", "soldOut": false }
+    ]},
+    { "groupName": "Sides & soup", "products": [
+      { "sku": "su_013", "title": "Miso soup", "desc": "Tofu, wakame, spring onion.", "price": "9.00", "soldOut": false },
+      { "sku": "su_014", "title": "Edamame", "desc": "Steamed, sea salt.", "price": "12.00", "soldOut": false },
+      { "sku": "su_015", "title": "Gyoza (5 pcs)", "desc": "Chicken and cabbage, pan-fried.", "price": "19.00", "soldOut": false },
+      { "sku": "su_016", "title": "Green tea", "desc": "Hot sencha.", "price": "8.00", "soldOut": false }
+    ]}
+  ]
+}
