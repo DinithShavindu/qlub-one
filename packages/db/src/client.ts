@@ -24,6 +24,8 @@ export type VendorOrderDoc = VendorOrder;
 export type SettlementEntryDoc = SettlementEntry;
 export type OnboardingRunDoc = OnboardingRun;
 export type CounterDoc = { key: string; seq: number };
+/** Venue manager login for the vendor panel (multivendor). Kept apart from `venues` so the hash never rides along with a venue read. */
+export type VenueManagerDoc = { venueId: string; pinHash: string; updatedAt: string };
 
 export interface Collections {
   venues: Collection<VenueDoc>;
@@ -35,6 +37,7 @@ export interface Collections {
   settlements: Collection<SettlementEntryDoc>;
   onboardingRuns: Collection<OnboardingRunDoc>;
   counters: Collection<CounterDoc>;
+  venueManagers: Collection<VenueManagerDoc>;
 }
 
 export const COLLECTION_NAMES: Record<keyof Collections, string> = {
@@ -47,6 +50,7 @@ export const COLLECTION_NAMES: Record<keyof Collections, string> = {
   settlements: "settlement_entries",
   onboardingRuns: "onboarding_runs",
   counters: "counters",
+  venueManagers: "venue_managers",
 };
 
 let clientPromise: Promise<MongoClient> | null = null;
@@ -86,6 +90,7 @@ export async function db(): Promise<Collections> {
     settlements: c(COLLECTION_NAMES.settlements) as unknown as Collection<SettlementEntryDoc>,
     onboardingRuns: c(COLLECTION_NAMES.onboardingRuns) as unknown as Collection<OnboardingRunDoc>,
     counters: c(COLLECTION_NAMES.counters) as unknown as Collection<CounterDoc>,
+    venueManagers: c(COLLECTION_NAMES.venueManagers) as unknown as Collection<VenueManagerDoc>,
   };
   return cols;
 }
@@ -117,6 +122,18 @@ export async function ensureIndexes(): Promise<void> {
     c.settlements.createIndex({ venueId: 1, createdAt: -1 }),
     c.onboardingRuns.createIndex({ venueId: 1 }),
     c.counters.createIndex({ key: 1 }, { unique: true }),
+    c.venueManagers.createIndex({ venueId: 1 }, { unique: true }),
+    c.tables.createIndex({ venueId: 1, posTableId: 1 }),
+  ]);
+}
+
+/** Fills fields added after a database was seeded (venue flow/gateway, vendor commission). Idempotent. */
+export async function backfillDefaults(): Promise<void> {
+  const c = await db();
+  await Promise.all([
+    c.venues.updateMany({ flow: { $exists: false } }, { $set: { flow: "qsr" } }),
+    c.venues.updateMany({ gateway: { $exists: false } }, { $set: { gateway: "qlub_test", gatewayMerchantId: null } }),
+    c.vendors.updateMany({ feeBps: { $exists: false } }, { $set: { feeBps: null } }),
   ]);
 }
 

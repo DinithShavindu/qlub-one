@@ -3,17 +3,25 @@ import { Hono } from "hono";
 import {
   AdminLoginRequest,
   BulkVendorsRequest,
+  CreateRestaurantRequest,
   CreateTablesRequest,
   CreateVenueRequest,
   MenuSyncRequest,
   QrListQuery,
   SetVendorOpenRequest,
   SettlementsQuery,
+  UpdateVendorRequest,
   UpdateVenueRequest,
+  isMultivendor,
   type AdminVenueDetailResponse,
+  type BulkVendorInput,
+  type CreateRestaurantResponse,
+  type OrderFlow,
+  type Vendor,
   type AdminVenuesResponse,
   type BulkVendorsResponse,
   type GoLiveResponse,
+  type ManagerPinResponse,
   type MenuSyncResponse,
   type PosVendorsResponse,
   type QrListResponse,
@@ -35,6 +43,8 @@ import { getVendorDoc, getVenue, listVendors, toVendor } from "../services/repo"
 import { dashboard, settlements } from "../services/stats";
 
 export const admin = new Hono();
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 admin.post("/admin/login", async (c) => {
   const { password } = parse(AdminLoginRequest, await c.req.json().catch(() => null));
@@ -78,11 +88,12 @@ admin.get("/admin/venues", async (c) => {
   return c.json(body);
 });
 
-admin.post("/admin/venues", async (c) => {
-  const req = parse(CreateVenueRequest, await c.req.json().catch(() => null));
+/** Inserts a draft venue with a unique code + slug and starts its onboarding run. */
+async function insertVenue(req: CreateVenueRequest) {
   const d = await db();
-  const usedCodes = new Set((await d.venues.find({}, { projection: { _id: 0, code: 1, slug: 1 } }).toArray()).map((v) => v.code));
-  const usedSlugs = new Set((await d.venues.find({}, { projection: { _id: 0, slug: 1 } }).toArray()).map((v) => v.slug));
+  const existing = await d.venues.find({}, { projection: { _id: 0, code: 1, slug: 1 } }).toArray();
+  const usedCodes = new Set(existing.map((v) => v.code));
+  const usedSlugs = new Set(existing.map((v) => v.slug));
   const code = venueCodeCandidates(req.name).find((x) => !usedCodes.has(x)) ?? `V${Date.now() % 100000}`;
   const venue: Venue = {
     id: newId("ven"),
@@ -90,6 +101,9 @@ admin.post("/admin/venues", async (c) => {
     slug: uniqueSlug(req.name, usedSlugs),
     code,
     type: req.type,
+    flow: req.flow,
+    gateway: req.gateway,
+    gatewayMerchantId: req.gatewayMerchantId || null,
     currency: req.currency,
     timezone: req.timezone,
     feeBps: req.feeBps,
@@ -99,7 +113,113 @@ admin.post("/admin/venues", async (c) => {
   };
   await d.venues.insertOne({ ...venue });
   const run = await startRun(venue.id);
+  return { venue, run };
+}
+
+/** PAT reads the open bill from the POS, so every vendor must be POS-connected. */
+function assertFlowFits(flow: OrderFlow, vendors: Pick<Vendor, "name" | "posMode">[]) {
+  if (flow !== "pat") return;
+  const tablet = vendors.filter((v) => v.posMode !== "mock_pos").map((v) => v.name);
+  if (tablet.length) {
+    throw new AppError("VALIDATION_ERROR", 400, `Pay at table needs every vendor on a POS — ${tablet.join(", ")} ${tablet.length === 1 ? "uses" : "use"} a tablet`);
+  }
+}
+
+/** Creates vendors with unique letters/slugs and one-time PINs. Caller validates names. */
+async function insertVendors(venueId: string, inputs: BulkVendorInput[], existing: VendorDoc[]) {
+  const letters = new Set(existing.map((v) => v.letter));
+  const slugs = new Set(existing.map((v) => v.slug));
+  let sort = existing.reduce((m, v) => Math.max(m, v.sortOrder + 1), 0);
+  const pins: BulkVendorsResponse["pins"] = [];
+  const docs: VendorDoc[] = [];
+  for (const v of inputs) {
+    const letter = assignLetter(v.name, letters);
+    letters.add(letter);
+    const slug = uniqueSlug(v.name, slugs);
+    slugs.add(slug);
+    const pin = newPin();
+    const doc: VendorDoc = {
+      id: newId("vdr"),
+      venueId,
+      name: v.name,
+      slug,
+      letter,
+      emoji: v.emoji || "🍽️",
+      accentToken: v.accentToken ?? accentFor(sort),
+      posMode: v.posMode,
+      posVendorId: v.posMode === "mock_pos" ? v.posVendorId ?? null : null,
+      isOpen: true,
+      sortOrder: sort++,
+      feeBps: null,
+      pinHash: await bcrypt.hash(pin, 8),
+    };
+    docs.push(doc);
+    pins.push({ vendorId: doc.id, name: doc.name, pin });
+  }
+  const d = await db();
+  if (docs.length) await d.vendors.insertMany(docs.map((x) => ({ ...x })));
+  return { docs, pins };
+}
+
+admin.post("/admin/venues", async (c) => {
+  const req = parse(CreateVenueRequest, await c.req.json().catch(() => null));
+  const { venue, run } = await insertVenue(req);
   return c.json({ venue, onboardingRun: run }, 201);
+});
+
+/**
+ * Single restaurant in one call: venue (type restaurant) + its one vendor + menu sync + table QRs, then live.
+ * Menu/POS trouble doesn't roll back — the restaurant is created and the error is reported.
+ */
+admin.post("/admin/restaurants", async (c) => {
+  const req = parse(CreateRestaurantRequest, await c.req.json().catch(() => null));
+  if (req.posMode === "mock_pos" && !req.posVendorId) throw new AppError("VALIDATION_ERROR", 400, "Pick the POS this restaurant uses");
+  assertFlowFits(req.flow, [{ name: req.name, posMode: req.posMode }]);
+  const d = await db();
+  if (req.posVendorId && (await d.vendors.countDocuments({ posVendorId: req.posVendorId }))) {
+    throw new AppError("CONFLICT", 409, `POS vendor ${req.posVendorId} is already linked to another restaurant`);
+  }
+
+  const { venue } = await insertVenue({
+    name: req.name,
+    type: "restaurant",
+    flow: req.flow,
+    gateway: req.gateway,
+    gatewayMerchantId: req.gatewayMerchantId,
+    feeBps: req.feeBps,
+    currency: "AED",
+    timezone: "Asia/Dubai",
+  });
+  const { docs, pins } = await insertVendors(venue.id, [{ name: req.name, emoji: req.emoji, posMode: req.posMode, posVendorId: req.posVendorId }], []);
+  const vendor = toVendor(docs[0]!);
+  await completeStep(venue.id, "vendors");
+
+  const sync = await syncVendorMenu(vendor);
+  await completeStep(venue.id, "menus");
+
+  if (req.tableCount > 0) {
+    await d.tables.insertMany(
+      Array.from({ length: req.tableCount }, (_, i) => ({ id: newId("tbl"), venueId: venue.id, label: `T${i + 1}`, qrToken: newQrToken(), vendorId: null })),
+    );
+  }
+  await completeStep(venue.id, "tables");
+
+  // live only once guests have something to scan and order from
+  let live = venue;
+  if (req.tableCount > 0 && sync.itemCount > 0) {
+    const run = await completeStep(venue.id, "live");
+    const setupDurationMs = run ? new Date(run.finishedAt ?? nowIso()).getTime() - new Date(run.startedAt).getTime() : 0;
+    live = (await d.venues.findOneAndUpdate({ id: venue.id }, { $set: { status: "live", setupDurationMs } }, { returnDocument: "after", projection: { _id: 0 } }))!;
+  }
+  const body: CreateRestaurantResponse = {
+    venue: live,
+    vendor,
+    pin: pins[0]!.pin,
+    itemCount: sync.itemCount,
+    tableCount: req.tableCount,
+    menuError: sync.ok ? (sync.itemCount ? null : "The menu is empty") : sync.error,
+  };
+  return c.json(body, 201);
 });
 
 admin.get("/admin/venues/:id", async (c) => {
@@ -117,6 +237,7 @@ admin.get("/admin/venues/:id", async (c) => {
     itemCount: itemCounts.reduce((a, x) => a + x.n, 0),
     onboardingRun: await getRun(venue.id),
     baselineMinPerVendor: config.baselineMinPerVendor,
+    hasManagerPin: (await d.venueManagers.countDocuments({ venueId: venue.id })) > 0,
   };
   return c.json(body);
 });
@@ -124,6 +245,14 @@ admin.get("/admin/venues/:id", async (c) => {
 admin.patch("/admin/venues/:id", async (c) => {
   const venue = await getVenue(c.req.param("id"));
   const req = parse(UpdateVenueRequest, await c.req.json().catch(() => null));
+  const vendors = await listVendors(venue.id);
+  if (req.type && isMultivendor(req.type) !== isMultivendor(venue.type)) {
+    if (req.type === "restaurant" && vendors.length > 1) {
+      throw new AppError("CONFLICT", 409, `A restaurant has one vendor — this venue has ${vendors.length}`);
+    }
+  }
+  if (req.flow) assertFlowFits(req.flow, vendors);
+  if (req.gatewayMerchantId === "") req.gatewayMerchantId = null;
   const d = await db();
   const updated = await d.venues.findOneAndUpdate({ id: venue.id }, { $set: req }, { returnDocument: "after", projection: { _id: 0 } });
   return c.json({ venue: updated });
@@ -145,6 +274,10 @@ admin.post("/admin/venues/:id/vendors/bulk", async (c) => {
   const req = parse(BulkVendorsRequest, await c.req.json().catch(() => null));
   const d = await db();
   const existing = await d.vendors.find({ venueId: venue.id }, NO_ID).toArray();
+  if (venue.type === "restaurant" && existing.length + req.vendors.length > 1) {
+    throw new AppError("CONFLICT", 409, "A restaurant has exactly one vendor — make it a food court or hotel to add more");
+  }
+  assertFlowFits(venue.flow, req.vendors);
 
   const names = new Set(existing.map((v) => v.name.toLowerCase()));
   const problems: string[] = [];
@@ -155,35 +288,7 @@ admin.post("/admin/venues/:id/vendors/bulk", async (c) => {
   }
   if (problems.length) throw new AppError("VALIDATION_ERROR", 400, problems.join("; "), { problems });
 
-  const letters = new Set(existing.map((v) => v.letter));
-  const slugs = new Set(existing.map((v) => v.slug));
-  let sort = existing.reduce((m, v) => Math.max(m, v.sortOrder + 1), 0);
-  const pins: BulkVendorsResponse["pins"] = [];
-  const docs: VendorDoc[] = [];
-  for (const v of req.vendors) {
-    const letter = assignLetter(v.name, letters);
-    letters.add(letter);
-    const slug = uniqueSlug(v.name, slugs);
-    slugs.add(slug);
-    const pin = newPin();
-    const doc: VendorDoc = {
-      id: newId("vdr"),
-      venueId: venue.id,
-      name: v.name,
-      slug,
-      letter,
-      emoji: v.emoji || "🍽️",
-      accentToken: v.accentToken ?? accentFor(sort),
-      posMode: v.posMode,
-      posVendorId: v.posMode === "mock_pos" ? v.posVendorId ?? null : null,
-      isOpen: true,
-      sortOrder: sort++,
-      pinHash: await bcrypt.hash(pin, 8),
-    };
-    docs.push(doc);
-    pins.push({ vendorId: doc.id, name: doc.name, pin });
-  }
-  await d.vendors.insertMany(docs.map((x) => ({ ...x })));
+  const { docs, pins } = await insertVendors(venue.id, req.vendors, existing);
   await completeStep(venue.id, "vendors");
   const body: BulkVendorsResponse = { vendors: docs.map(toVendor), pins };
   return c.json(body, 201);
@@ -195,6 +300,49 @@ admin.post("/admin/vendors/:vendorId/open", async (c) => {
   const d = await db();
   await d.vendors.updateOne({ id: v.id }, { $set: { isOpen } });
   return c.json(toVendor({ ...v, isOpen }));
+});
+
+/** Multivendor venue manager login for the vendor panel. Shown once; resetting invalidates the old PIN. */
+admin.post("/admin/venues/:id/manager-pin", async (c) => {
+  const venue = await getVenue(c.req.param("id"));
+  if (!isMultivendor(venue.type)) throw new AppError("VALIDATION_ERROR", 400, "A single restaurant logs in as its vendor — no manager login needed");
+  const pin = newPin();
+  const d = await db();
+  await d.venueManagers.updateOne({ venueId: venue.id }, { $set: { pinHash: await bcrypt.hash(pin, 8), updatedAt: nowIso() } }, { upsert: true });
+  const body: ManagerPinResponse = { venueId: venue.id, pin };
+  return c.json(body);
+});
+
+/** Restaurant / vendor settings: name, emoji, POS link, commission override. */
+admin.patch("/admin/vendors/:vendorId", async (c) => {
+  const v = await getVendorDoc(c.req.param("vendorId"));
+  const req = parse(UpdateVendorRequest, await c.req.json().catch(() => null));
+  const venue = await getVenue(v.venueId);
+  const d = await db();
+  const set: Partial<VendorDoc> = {};
+  if (req.name !== undefined && req.name !== v.name) {
+    if (await d.vendors.countDocuments({ venueId: v.venueId, id: { $ne: v.id }, name: { $regex: `^${escapeRegex(req.name)}$`, $options: "i" } })) {
+      throw new AppError("CONFLICT", 409, `"${req.name}" already exists in this venue`);
+    }
+    set.name = req.name;
+  }
+  if (req.emoji !== undefined) set.emoji = req.emoji;
+  if (req.feeBps !== undefined) set.feeBps = req.feeBps;
+  const posMode = req.posMode ?? v.posMode;
+  if (req.posMode !== undefined || req.posVendorId !== undefined) {
+    const posVendorId = posMode === "mock_pos" ? (req.posVendorId === undefined ? v.posVendorId : req.posVendorId) : null;
+    if (posMode === "mock_pos" && !posVendorId) throw new AppError("VALIDATION_ERROR", 400, "Pick the POS vendor");
+    if (posVendorId && posVendorId !== v.posVendorId && (await d.vendors.countDocuments({ posVendorId, id: { $ne: v.id } }))) {
+      throw new AppError("CONFLICT", 409, `POS vendor ${posVendorId} is already linked to another vendor`);
+    }
+    set.posMode = posMode;
+    set.posVendorId = posVendorId;
+  }
+  if (posMode !== "mock_pos" && venue.flow === "pat") assertFlowFits("pat", [{ name: v.name, posMode }]);
+  if (Object.keys(set).length) await d.vendors.updateOne({ id: v.id }, { $set: set });
+  // a single restaurant's name is its venue's name
+  if (set.name && venue.type === "restaurant") await d.venues.updateOne({ id: venue.id }, { $set: { name: set.name } });
+  return c.json(toVendor({ ...v, ...set }));
 });
 
 admin.post("/admin/vendors/:vendorId/reset-pin", async (c) => {
@@ -274,8 +422,6 @@ admin.post("/admin/venues/:id/tables", async (c) => {
 });
 
 /* ── QR manager (all venues) ── */
-
-const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * QRs across venues: one venue (`venue` = code or slug), a subset (`venueIds`), or every venue combined.

@@ -1,11 +1,12 @@
 import { serve } from "@hono/node-server";
-import { ensureIndexes } from "@one/db";
+import { backfillDefaults, ensureIndexes } from "@one/db";
 import { app } from "./app";
 import { config } from "./config";
 import { logger } from "./lib/logger";
 
 try {
   await ensureIndexes();
+  await backfillDefaults();
   logger.info("MongoDB connected, indexes ensured");
 } catch (err) {
   logger.error({ err: err instanceof Error ? err.message : String(err) }, "MongoDB unavailable at startup — will retry on first request");

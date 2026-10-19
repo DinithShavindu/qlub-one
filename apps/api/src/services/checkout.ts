@@ -16,6 +16,7 @@ import { assertSplitInvariant, ledgerFor, priceCart, splitForVendors, type Price
 
 export async function quote(req: QuoteRequest): Promise<{ venue: Venue; priced: PricedCart; vendors: Vendor[] }> {
   const venue = await getVenue(req.venueId);
+  if (venue.flow === "pat") throw new AppError("WRONG_FLOW", 409, "This venue uses pay at table — scan your table QR to see your bill.");
   const table = await getTable(req.tableId);
   if (table.venueId !== venue.id) throw new AppError("NOT_FOUND", 404, "Table not found at this venue");
   // an individual vendor QR can only order from that vendor
@@ -116,7 +117,7 @@ export async function checkout(req: CheckoutRequest, guestToken: string): Promis
   }
 
   // 4. charge once
-  const result = await charge(mo.totalMinor, req.paymentMethod, req.simulate);
+  const result = await charge(mo.totalMinor, req.paymentMethod, req.simulate, venue.gateway);
   if (!result.ok) {
     await c.masterOrders.updateOne({ id: mo.id }, { $set: { status: "payment_failed" } });
     throw new AppError("PAYMENT_DECLINED", 402, "Payment didn't go through. Nothing was charged.");
@@ -128,7 +129,7 @@ export async function checkout(req: CheckoutRequest, guestToken: string): Promis
   mo.paymentRef = result.ref;
 
   // 6. fan-out in parallel
-  const splits = splitForVendors(priced.groups, venue.feeBps);
+  const splits = splitForVendors(priced.groups, (vendorId) => vendorsById.get(vendorId)?.feeBps ?? venue.feeBps);
   const failVendorId =
     req.simulate === "fail_one_vendor"
       ? ([...priced.groups].reverse().find((g) => vendorsById.get(g.vendorId)?.posMode === "mock_pos") ?? priced.groups.at(-1))?.vendorId
@@ -243,7 +244,7 @@ async function fanOutOne(args: {
     vo.updatedAt = vo.statusChangedAt = nowIso();
     await c.vendorOrders.updateOne({ id: vo.id }, { $set: { status: vo.status, posOrderId: vo.posOrderId, updatedAt: vo.updatedAt, statusChangedAt: vo.statusChangedAt } });
     await bookLedger(vo, true);
-    publish([channel.vendor(vendor.id)], "vendor_order.created", vo);
+    publish([channel.vendor(vendor.id), channel.kds(vo.venueId)], "vendor_order.created", vo);
     publish([channel.order(masterOrder.id)], "vendor_order.updated", { vendorOrderId: vo.id, status: vo.status, pickupCode: vo.pickupCode });
     return vo;
   } catch (err) {

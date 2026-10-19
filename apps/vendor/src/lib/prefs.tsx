@@ -13,13 +13,13 @@ interface Prefs {
 
 const Ctx = createContext<Prefs | null>(null);
 
-/** Theme (dark by default — kitchens are bright) and sound on/off, persisted in localStorage. */
+/** Theme (light by default, like the qlub vendor panel; dark is one tap away for the kitchen) and sound, persisted in localStorage. */
 export function PrefsProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>("light");
   const [soundOn, setSoundState] = useState(true);
 
   useEffect(() => {
-    setThemeState(readStorage(STORAGE_KEYS.theme) === "light" ? "light" : "dark");
+    setThemeState(readStorage(STORAGE_KEYS.theme) === "dark" ? "dark" : "light");
     setSoundState(readStorage(STORAGE_KEYS.sound) !== "off");
   }, []);
 
@@ -47,4 +47,4 @@ export function usePrefs(): Prefs {
 }
 
 /** Inline script for <head>: applies the stored theme before first paint (no flash). */
-export const THEME_INIT_SCRIPT = `try{if(localStorage.getItem("${STORAGE_KEYS.theme}")==="light")document.documentElement.classList.remove("dark")}catch(e){}`;
+export const THEME_INIT_SCRIPT = `try{if(localStorage.getItem("${STORAGE_KEYS.theme}")==="dark")document.documentElement.classList.add("dark")}catch(e){}`;

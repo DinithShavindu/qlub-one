@@ -2,11 +2,11 @@
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Store } from "lucide-react";
+import { Building2, ChevronRight, Store } from "lucide-react";
 import type { VendorVenueLookupResponse } from "@one/contracts";
 import { ApiClientError, apiFetch, EmptyState, ErrorState, Skeleton } from "@one/ui";
 import { AppButton } from "@/components/AppButton";
-import { PinStep } from "@/components/login/PinStep";
+import { PinStep, type LoginTarget } from "@/components/login/PinStep";
 import { VendorTilePicker } from "@/components/login/VendorTilePicker";
 import { useMe } from "@/lib/queries";
 import { readStorage, STORAGE_KEYS, writeStorage } from "@/lib/storage";
@@ -25,7 +25,7 @@ function LoginFlow() {
   const router = useRouter();
   const params = useSearchParams();
   const code = (params.get("venue") ?? "").trim().toUpperCase();
-  const [picked, setPicked] = useState<VendorVenueLookupResponse["vendors"][number] | null>(null);
+  const [picked, setPicked] = useState<LoginTarget | null>(null);
 
   // already signed in (session survives refresh for 12h) → straight to the board
   const me = useMe();
@@ -55,7 +55,7 @@ function LoginFlow() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-micro font-semibold uppercase text-ink-muted">Kitchen display</p>
+          <p className="text-micro font-semibold uppercase text-ink-muted">qlub vendor panel</p>
           <h1 className="font-display text-h1 font-bold">{lookup.data?.venue.name ?? "Sign in"}</h1>
         </div>
         <button
@@ -85,13 +85,27 @@ function LoginFlow() {
           <ErrorState title="Couldn't load stalls" retry={() => void lookup.refetch()} />
         )
       ) : picked ? (
-        <PinStep vendor={picked} onBack={() => setPicked(null)} />
+        <PinStep target={picked} onBack={() => setPicked(null)} />
       ) : lookup.data.vendors.length === 0 ? (
         <EmptyState icon={<Store className="h-10 w-10" />} title="No stalls yet" body="Ask your qlub contact to add your stall to this venue." />
       ) : (
         <>
-          <h2 className="text-h2 font-semibold">Tap your stall</h2>
-          <VendorTilePicker vendors={lookup.data.vendors} onPick={setPicked} />
+          {lookup.data.venue.hasManager && (
+            <button
+              type="button"
+              onClick={() => setPicked({ kind: "manager", venueId: lookup.data.venue.id, venueName: lookup.data.venue.name })}
+              className="flex min-h-[80px] w-full items-center gap-4 rounded-lg border-2 border-brand/50 bg-surface p-4 text-left shadow-card transition hover:bg-surface-sunk focus-visible:ring-2 focus-visible:ring-brand-strong"
+            >
+              <Building2 className="h-10 w-10 shrink-0 text-brand-strong" aria-hidden />
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-h2 font-bold">Venue manager</span>
+                <span className="block text-small text-ink-muted">All {lookup.data.vendors.length} vendors — combined orders, dashboard and reports</span>
+              </span>
+              <ChevronRight className="h-6 w-6 text-ink-soft" aria-hidden />
+            </button>
+          )}
+          <h2 className="text-h2 font-semibold">{lookup.data.venue.type === "restaurant" ? "Tap your restaurant" : lookup.data.venue.hasManager ? "Or tap your stall" : "Tap your stall"}</h2>
+          <VendorTilePicker vendors={lookup.data.vendors} onPick={(v) => setPicked({ kind: "vendor", vendor: v })} />
         </>
       )}
     </div>

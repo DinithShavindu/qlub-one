@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { VendorMeResponse, VendorOrder } from "@one/contracts";
+import { usePanel } from "@/lib/panel";
 import { ErrorState, isAudioUnlocked, Skeleton } from "@one/ui";
 import { cx } from "@/lib/cx";
 import { useKdsBoard } from "@/hooks/useKdsBoard";
@@ -25,9 +26,20 @@ export function KdsBoard({ me }: { me: VendorMeResponse }) {
   const announce = useCallback((msg: string) => setAnnouncement((prev) => (prev === msg ? `${msg}​` : msg)), []);
 
   const board = useKdsBoard({ soundOn, announce });
-  const { columns, connection, fresh, unacked, acknowledge, move, query } = board;
+  const { columns: allColumns, connection, fresh, unacked, acknowledge, move, query } = board;
 
-  useTitleFlash(unacked > 0 ? `(${unacked}) New order` : null, `${me.vendor.name} · Kitchen`);
+  // a venue manager's board holds every vendor; the top-bar Vendor filter narrows it
+  const { isManager, vendorId, vendorsById } = usePanel();
+  const columns = useMemo(
+    () =>
+      isManager && vendorId
+        ? (Object.fromEntries(BOARD_STATUSES.map((s) => [s, allColumns[s].filter((o) => o.vendorId === vendorId)])) as typeof allColumns)
+        : allColumns,
+    [allColumns, isManager, vendorId],
+  );
+  const showVendor = isManager && !vendorId ? vendorsById : undefined;
+
+  useTitleFlash(unacked > 0 ? `(${unacked}) New order` : null, `${me.vendor?.name ?? me.venue.name} · QSR Orders`);
 
   // any tap/key on the board acknowledges new orders → stop the title flashing
   useEffect(() => {
@@ -65,7 +77,7 @@ export function KdsBoard({ me }: { me: VendorMeResponse }) {
   const offline = !online || connection === "offline";
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    <div className="flex h-[calc(100dvh-74px)] flex-col overflow-hidden">
       <KdsTopBar me={me} now={now} connection={connection} todayCount={board.todayCount} />
       {offline && <OfflineBanner />}
 
@@ -107,6 +119,7 @@ export function KdsBoard({ me }: { me: VendorMeResponse }) {
                 fresh={fresh}
                 onMove={onMove}
                 onOpen={onOpen}
+                vendorsById={showVendor}
                 className={cx(tab === s ? "flex" : "hidden", "md:flex")}
               />
             ))}

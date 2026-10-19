@@ -60,7 +60,7 @@ export async function applyStatus(order: VendorOrder, to: VendorOrderStatus, kin
   if (!res) throw new AppError("CONFLICT", 409, "Order changed on another screen — refresh");
   const updated = res as VendorOrder;
 
-  publish([channel.vendor(updated.vendorId), channel.order(updated.masterOrderId)], "vendor_order.updated", {
+  publish([channel.vendor(updated.vendorId), channel.kds(updated.venueId), channel.order(updated.masterOrderId)], "vendor_order.updated", {
     vendorOrderId: updated.id,
     status: updated.status,
     pickupCode: updated.pickupCode,

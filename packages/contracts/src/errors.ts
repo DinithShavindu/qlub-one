@@ -5,6 +5,8 @@ export const ErrorCode = z.enum([
   "NOT_FOUND",
   "QR_NOT_FOUND",
   "VENUE_NOT_LIVE",
+  /** QSR ordering on a pay-at-table venue (or the reverse). */
+  "WRONG_FLOW",
   "UNAUTHORIZED",
   "FORBIDDEN",
   "WRONG_PIN",

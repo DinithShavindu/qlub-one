@@ -37,6 +37,14 @@ export interface PosOrderInput {
   currency: string;
 }
 
+/** A table on the POS floor plan (GetFloorPlan). */
+export interface PosTable {
+  posTableId: string;
+  name: string;
+  section: string;
+  seats: number;
+}
+
 export interface PosDirectoryEntry {
   posVendorId: string;
   displayName: string;

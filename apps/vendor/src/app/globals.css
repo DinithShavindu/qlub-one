@@ -1,3 +1,42 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Same theme as the admin panel (qlub look: white surfaces, purple brand). Overrides @one/ui tokens.
+   `.dark` comes after `:root` here and repeats every base token, because both have equal specificity. */
+:root {
+  --ink: 17 24 39;            /* #111827 */
+  --ink-soft: 55 65 81;       /* #374151 */
+  --ink-muted: 107 114 128;   /* #6B7280 */
+  --paper: 248 248 250;       /* #F8F8FA */
+  --surface: 255 255 255;     /* #FFFFFF */
+  --surface-sunk: 243 244 246;/* #F3F4F6 */
+  --line: 231 232 236;        /* #E7E8EC */
+  --brand: 80 66 230;         /* #5042E6 */
+  --brand-strong: 62 50 196;  /* #3E32C4 */
+  --on-brand: 255 255 255;
+  --status-new: 238 236 255;  --status-new-fg: 62 50 196;
+}
+
+/* Kitchen dark mode, in the same purple family. */
+.dark {
+  --ink: 243 244 246;
+  --ink-soft: 203 207 216;
+  --ink-muted: 156 163 175;
+  --paper: 15 17 30;          /* #0F111E */
+  --surface: 24 27 45;        /* #181B2D */
+  --surface-sunk: 11 13 24;
+  --line: 44 49 72;
+  --brand: 139 128 255;       /* #8B80FF */
+  --brand-strong: 172 164 255;
+  --on-brand: 15 17 30;
+  --status-new: 46 40 110;    --status-new-fg: 207 202 255;
+}
+
+@layer components {
+  .data-table { @apply w-full text-left text-small; }
+  .data-table thead th { @apply whitespace-nowrap px-5 py-4 text-small font-semibold text-ink-soft; }
+  .data-table tbody tr { @apply border-t border-line; }
+  .data-table tbody td { @apply px-5 py-3.5 align-middle; }
+  .data-table tfoot td { @apply border-t-2 border-line px-5 py-3.5 font-semibold; }
+}

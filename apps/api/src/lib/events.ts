@@ -23,6 +23,8 @@ export const channel = {
   vendor: (id: string) => `vendor:${id}`,
   order: (id: string) => `order:${id}`,
   venue: (id: string) => `venue:${id}`,
+  /** Every vendor order of a venue — the venue manager's combined QSR board. */
+  kds: (venueId: string) => `kds:${venueId}`,
 };
 
 /** Stream one bus channel as SSE with a 15s heartbeat. */

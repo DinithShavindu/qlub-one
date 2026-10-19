@@ -3,15 +3,17 @@
  * ROADMAP: real gateway + split settlement to vendor bank accounts.
  */
 import { ulid } from "ulid";
+import type { PaymentGateway } from "@one/contracts";
 import { logger } from "../lib/logger";
 
 export type ChargeResult = { ok: true; ref: string } | { ok: false; reason: string };
 
-export async function charge(amountMinor: number, method: "test_card", simulate?: string): Promise<ChargeResult> {
+/** `gateway` is the venue's configured gateway; every gateway is simulated, the ref says which one "captured". */
+export async function charge(amountMinor: number, method: "test_card", simulate?: string, gateway: PaymentGateway = "qlub_test"): Promise<ChargeResult> {
   await new Promise((r) => setTimeout(r, 150)); // feels like a real network call
   if (simulate === "decline") return { ok: false, reason: "Test card declined (simulated)" };
-  const ref = `mockpay_${ulid().toLowerCase()}`;
-  logger.info({ amountMinor, method, ref }, "mock charge captured");
+  const ref = `${gateway === "qlub_test" ? "mockpay" : gateway}_${ulid().toLowerCase()}`;
+  logger.info({ amountMinor, method, gateway, ref }, "mock charge captured");
   return { ok: true, ref };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 import { Bell, CheckCircle, ChefHat } from "lucide-react";
-import type { KdsStatus, VendorOrder } from "@one/contracts";
+import type { KdsStatus, Vendor, VendorOrder } from "@one/contracts";
 import { EmptyState } from "@one/ui";
 import { cx } from "@/lib/cx";
 import { COLUMN_META, type BoardStatus } from "@/lib/kds";
@@ -16,7 +16,10 @@ export function KdsColumn({
   onMove,
   onOpen,
   className,
+  vendorsById,
 }: {
+  /** Set on the combined board: each card shows its vendor. */
+  vendorsById?: Map<string, Vendor>;
   status: BoardStatus;
   orders: VendorOrder[];
   now: number;
@@ -55,7 +58,7 @@ export function KdsColumn({
             className="rounded-lg border border-dashed border-line"
           />
         ) : (
-          orders.map((o) => <KdsOrderCard key={o.id} order={o} now={now} fresh={!!fresh[o.id]} onMove={onMove} onOpen={onOpen} />)
+          orders.map((o) => <KdsOrderCard key={o.id} order={o} now={now} fresh={!!fresh[o.id]} onMove={onMove} onOpen={onOpen} vendor={vendorsById?.get(o.vendorId)} />)
         )}
       </div>
     </section>

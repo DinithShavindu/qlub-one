@@ -69,6 +69,19 @@ app.get("/pos/:posVendorId/menu", (c) => {
   return c.json({ store: { id: r.posVendorId, ...r.store }, groups: r.groups });
 });
 
+/** Floor plan. Fixed per restaurant: 8 tables over two sections (the POS owns table ids). */
+app.get("/pos/:posVendorId/tables", (c) => {
+  const id = c.get("posVendorId");
+  return c.json({
+    tables: Array.from({ length: 8 }, (_, i) => ({
+      tableId: `${id}-T${i + 1}`,
+      name: `Table ${i + 1}`,
+      section: i < 5 ? "Main" : "Terrace",
+      seats: i % 3 === 0 ? 2 : 4,
+    })),
+  });
+});
+
 app.post("/pos/:posVendorId/checks", async (c) => {
   const id = c.get("posVendorId");
   const r = state.restaurants.get(id)!;

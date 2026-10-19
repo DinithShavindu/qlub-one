@@ -1,10 +1,11 @@
 "use client";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@one/ui";
-import type { CreateVenueRequest, Venue, VenueType } from "@one/contracts";
-import { VENUE_TYPE_LABEL } from "@/lib/format";
+import { MULTIVENDOR_TYPES, OrderFlow, PaymentGateway, type CreateVenueRequest, type Venue, type VenueType } from "@one/contracts";
+import { FLOW_HINT, FLOW_LABEL, GATEWAY_LABEL, VENUE_TYPE_LABEL } from "@/lib/format";
 
 const TYPE_HINT: Record<VenueType, string> = {
+  restaurant: "One restaurant on its own.",
   food_court: "Many vendors, shared seating, one QR per seat.",
   hotel: "Restaurants, bars and room service under one roof, one QR per table or room.",
 };
@@ -42,6 +43,9 @@ export function StepVenueForm({
 }) {
   const [name, setName] = useState(venue?.name ?? "Harbour Food Hall");
   const [type, setType] = useState<VenueType>(venue?.type ?? "food_court");
+  const [flow, setFlow] = useState<OrderFlow>(venue?.flow ?? "qsr");
+  const [gateway, setGateway] = useState<PaymentGateway>(venue?.gateway ?? "qlub_test");
+  const [merchantId, setMerchantId] = useState(venue?.gatewayMerchantId ?? "");
   const [fee, setFee] = useState(venue ? (venue.feeBps / 100).toFixed(1) : "1.0");
   const [errors, setErrors] = useState<{ name?: string; fee?: string }>({});
 
@@ -54,7 +58,7 @@ export function StepVenueForm({
     if (!/^\d+(\.\d{1,2})?$/.test(fee.trim()) || feeNum > 20) next.fee = "Enter a fee between 0 and 20%, up to 2 decimals.";
     setErrors(next);
     if (Object.keys(next).length) return;
-    onSubmit({ name: trimmed, type, currency: "AED", timezone: "Asia/Dubai", feeBps: Math.round(feeNum * 100) });
+    onSubmit({ name: trimmed, type, flow, gateway, gatewayMerchantId: merchantId.trim() || null, currency: "AED", timezone: "Asia/Dubai", feeBps: Math.round(feeNum * 100) });
   }
 
   return (
@@ -73,12 +77,33 @@ export function StepVenueForm({
       <div className="grid grid-cols-2 gap-5">
         <Field id="venue-type" label="Venue type" hint={TYPE_HINT[type]}>
           <select id="venue-type" className={input} value={type} onChange={(e) => setType(e.target.value as VenueType)}>
-            {(Object.keys(VENUE_TYPE_LABEL) as VenueType[]).map((t) => (
+            {MULTIVENDOR_TYPES.map((t) => (
               <option key={t} value={t}>
                 {VENUE_TYPE_LABEL[t]}
               </option>
             ))}
           </select>
+        </Field>
+        <Field id="venue-flow" label="Flow" hint={FLOW_HINT[flow]}>
+          <select id="venue-flow" className={input} value={flow} onChange={(e) => setFlow(e.target.value as OrderFlow)}>
+            {OrderFlow.options.map((f) => (
+              <option key={f} value={f}>
+                {FLOW_LABEL[f]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field id="venue-gateway" label="Payment gateway">
+          <select id="venue-gateway" className={input} value={gateway} onChange={(e) => setGateway(e.target.value as PaymentGateway)}>
+            {PaymentGateway.options.map((g) => (
+              <option key={g} value={g}>
+                {GATEWAY_LABEL[g]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field id="venue-merchant" label="Gateway merchant id" hint="Optional — the venue's account on that gateway.">
+          <input id="venue-merchant" className={input} value={merchantId} maxLength={60} onChange={(e) => setMerchantId(e.target.value)} placeholder="e.g. pk_live_…" />
         </Field>
         <Field id="venue-currency" label="Currency">
           <select id="venue-currency" className={input} value="AED" disabled>
@@ -90,7 +115,7 @@ export function StepVenueForm({
             <option value="Asia/Dubai">Asia/Dubai (GST, UTC+4)</option>
           </select>
         </Field>
-        <Field id="venue-fee" label="qlub fee %" hint="Taken per vendor order, e.g. 1.0% = 100 bps." error={errors.fee}>
+        <Field id="venue-fee" label="qlub commission %" hint="Per vendor order; vendors can override in Settings." error={errors.fee}>
           <input
             id="venue-fee"
             className={input}

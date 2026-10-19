@@ -43,14 +43,14 @@ describe.skipIf(!hasDb)("api integration (MongoDB)", async () => {
     const c = await db();
     const now = new Date().toISOString();
     await c.venues.insertOne({
-      id: ids.venue, name: "Test Hall", slug: "test-hall", code: "TESTHALL", type: "food_court", currency: "AED",
+      id: ids.venue, name: "Test Hall", slug: "test-hall", code: "TESTHALL", type: "food_court", flow: "qsr", gateway: "qlub_test", gatewayMerchantId: null, currency: "AED",
       timezone: "Asia/Dubai", feeBps: 100, status: "live", setupDurationMs: 1000, createdAt: now,
     });
     await c.tables.insertOne({ id: ids.table, venueId: ids.venue, label: "T1", qrToken });
     const pinHash = await bcrypt.hash("1234", 4);
     await c.vendors.insertMany([
-      { id: ids.a, venueId: ids.venue, name: "Alpha", slug: "alpha", letter: "A", emoji: "🅰️", accentToken: "vendor-1", posMode: "tablet", posVendorId: null, isOpen: true, sortOrder: 0, pinHash },
-      { id: ids.b, venueId: ids.venue, name: "Bravo", slug: "bravo", letter: "B", emoji: "🅱️", accentToken: "vendor-2", posMode: "tablet", posVendorId: null, isOpen: true, sortOrder: 1, pinHash },
+      { id: ids.a, venueId: ids.venue, name: "Alpha", slug: "alpha", letter: "A", emoji: "🅰️", accentToken: "vendor-1", posMode: "tablet", posVendorId: null, isOpen: true, sortOrder: 0, feeBps: null, pinHash },
+      { id: ids.b, venueId: ids.venue, name: "Bravo", slug: "bravo", letter: "B", emoji: "🅱️", accentToken: "vendor-2", posMode: "tablet", posVendorId: null, isOpen: true, sortOrder: 1, feeBps: null, pinHash },
     ]);
     await c.menuItems.insertMany([
       { id: ids.itemA, vendorId: ids.a, posItemId: "a1", name: "Odd item", description: "", category: "Mains", priceMinor: 1005, imageUrl: null, available: true, sortOrder: 0, syncedAt: now },
@@ -153,5 +153,132 @@ describe.skipIf(!hasDb)("api integration (MongoDB)", async () => {
     const s = (await admin(`/admin/venues/${ids.venue}/settlements`)).body;
     expect(s.balanced).toBe(true);
     expect(s.totals.netMinor + s.totals.feeMinor).toBe(s.totals.grossMinor);
+  });
+
+  /* ── admin: restaurants, multivendor QRs, flow, commission ── */
+
+  async function adminClient() {
+    const admin = client();
+    await admin("/admin/login", { json: { password: process.env.ADMIN_PASSWORD ?? "demo" } });
+    return admin;
+  }
+
+  it("creates a single restaurant in one call and keeps it to one vendor", async () => {
+    const admin = await adminClient();
+    const res = await admin("/admin/restaurants", { json: { name: "Solo Grill", emoji: "🔥", posMode: "tablet", tableCount: 3, feeBps: 150 } });
+    expect(res.status).toBe(201);
+    expect(res.body.venue).toMatchObject({ type: "restaurant", status: "live", flow: "qsr", gateway: "qlub_test", feeBps: 150 });
+    expect(res.body.vendor.name).toBe("Solo Grill");
+    expect(res.body.pin).toMatch(/^\d{4}$/);
+    expect(res.body.itemCount).toBeGreaterThan(0);
+    const venueId = res.body.venue.id;
+    expect((await admin(`/admin/venues/${venueId}/tables`)).body.tables).toHaveLength(3);
+
+    const second = await admin(`/admin/venues/${venueId}/vendors/bulk`, { json: { vendors: [{ name: "Extra", posMode: "tablet" }] } });
+    expect(second.status).toBe(409);
+    // PAT reads the bill from the POS — a tablet restaurant can't switch to it
+    expect((await admin(`/admin/venues/${venueId}`, { method: "PATCH", json: { flow: "pat" } })).status).toBe(400);
+    // renaming the restaurant's vendor renames the venue
+    await admin(`/admin/vendors/${res.body.vendor.id}`, { method: "PATCH", json: { name: "Solo Grill & Bar" } });
+    expect((await admin(`/admin/venues/${venueId}`)).body.venue.name).toBe("Solo Grill & Bar");
+  });
+
+  it("a pay-at-table venue refuses QSR ordering", async () => {
+    const c = await db();
+    const venueId = newId("ven");
+    const tableId = newId("tbl");
+    await c.venues.insertOne({
+      id: venueId, name: "Bill Hall", slug: "bill-hall", code: "BILLHALL", type: "food_court", flow: "pat", gateway: "stripe", gatewayMerchantId: null,
+      currency: "AED", timezone: "Asia/Dubai", feeBps: 100, status: "live", setupDurationMs: 1, createdAt: new Date().toISOString(),
+    });
+    await c.tables.insertOne({ id: tableId, venueId, label: "T1", qrToken: newQrToken() });
+    const res = await client()("/checkout/quote", { json: { venueId, tableId, lines: [{ menuItemId: ids.itemA, qty: 1 }] } });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("WRONG_FLOW");
+  });
+
+  it("vendor QRs open one vendor; the QR list filters combined / shared / per vendor", async () => {
+    const admin = await adminClient();
+    const created = await admin(`/admin/venues/${ids.venue}/tables`, { json: { count: 2, prefix: "A", vendorId: ids.a } });
+    expect(created.status).toBe(201);
+    const vendorQr = created.body.tables.find((t: { vendorId: string | null }) => t.vendorId === ids.a);
+
+    const list = async (q: string) => (await admin(`/admin/qr/list?venue=TESTHALL${q}`)).body;
+    expect((await list("")).count).toBe(3);
+    expect((await list("&vendor=shared")).count).toBe(1);
+    expect((await list("&vendor=individual")).count).toBe(2);
+    const alpha = await list("&vendor=alpha");
+    expect(alpha.count).toBe(2);
+    expect(alpha.rows[0].vendor).toMatchObject({ id: ids.a, slug: "alpha" });
+    expect((await admin("/admin/qr/list?venue=TESTHALL&vendor=nope")).status).toBe(400);
+
+    const guest = client();
+    const resolved = (await guest(`/t/${vendorQr.qrToken}`)).body;
+    expect(resolved.vendors.map((v: { id: string }) => v.id)).toEqual([ids.a]);
+    const quote = (await guest("/checkout/quote", { json: { venueId: ids.venue, tableId: vendorQr.id, lines: lines() } })).body;
+    expect(quote.groups.map((g: { vendorId: string }) => g.vendorId)).toEqual([ids.a]);
+    expect(quote.issues.map((i: { menuItemId: string }) => i.menuItemId)).toEqual([ids.itemB]);
+  });
+
+  it("a vendor commission override is used for its orders and the ledger still balances", async () => {
+    const admin = await adminClient();
+    expect((await admin(`/admin/vendors/${ids.a}`, { method: "PATCH", json: { feeBps: 250 } })).status).toBe(200);
+    const guest = client();
+    await guest(`/t/${qrToken}`);
+    const order = (await guest("/checkout", { json: { venueId: ids.venue, tableId: ids.table, lines: lines(), paymentMethod: "test_card" } })).body;
+    const byVendor = Object.fromEntries(order.vendorOrders.map((v: { vendorId: string; feeMinor: number }) => [v.vendorId, v.feeMinor]));
+    expect(byVendor[ids.a]).toBe(25); // 1005 × 2.5% = 25.125 → 25
+    expect(byVendor[ids.b]).toBe(84); // 8400 × 1% (venue default)
+    expect((await admin(`/admin/venues/${ids.venue}/settlements`)).body.balanced).toBe(true);
+    await admin(`/admin/vendors/${ids.a}`, { method: "PATCH", json: { feeBps: null } });
+  });
+
+  /* ── vendor panel: venue manager + scoped pages ── */
+
+  it("a venue manager sees every vendor; a vendor only itself; ?vendorId can't escape the venue", async () => {
+    const admin = await adminClient();
+    const pinRes = await admin(`/admin/venues/${ids.venue}/manager-pin`, { json: {} });
+    expect(pinRes.status).toBe(200);
+    expect((await admin(`/admin/venues/${ids.venue}`)).body.hasManagerPin).toBe(true);
+    expect((await client()(`/vendor/venues/TESTHALL`)).body.venue.hasManager).toBe(true);
+
+    const guest = client();
+    await guest(`/t/${qrToken}`);
+    const order = (await guest("/checkout", { json: { venueId: ids.venue, tableId: ids.table, lines: lines(), paymentMethod: "test_card" } })).body;
+    const aOrder = order.vendorOrders.find((v: { vendorId: string }) => v.vendorId === ids.a);
+
+    const mgr = client();
+    expect((await mgr("/vendor/login", { json: { venueId: ids.venue, pin: "0000" === pinRes.body.pin ? "1111" : "0000" } })).status).toBe(401);
+    const me = (await mgr("/vendor/login", { json: { venueId: ids.venue, pin: pinRes.body.pin } })).body;
+    expect(me.role).toBe("manager");
+    expect(me.vendor).toBeNull();
+    expect(me.vendors.map((v: { id: string }) => v.id).sort()).toEqual([ids.a, ids.b].sort());
+
+    const board = (await mgr("/vendor/orders")).body.vendorOrders as { vendorId: string }[];
+    expect(new Set(board.map((o) => o.vendorId))).toEqual(new Set([ids.a, ids.b]));
+    const dash = (await mgr("/vendor/dashboard")).body;
+    expect(dash.byVendor).toHaveLength(2);
+    expect((await mgr(`/vendor/dashboard?vendorId=${ids.a}`)).body.byVendor).toHaveLength(1);
+    expect((await mgr("/vendor/dashboard?vendorId=vdr_elsewhere")).status).toBe(404);
+    // the manager moves vendor A's order on its behalf
+    expect((await mgr(`/vendor/orders/${aOrder.id}/status`, { json: { status: "preparing" } })).body.status).toBe("preparing");
+
+    const a = client();
+    await a("/vendor/login", { json: { vendorId: ids.a, pin: "1234" } });
+    expect((await a("/vendor/me")).body.role).toBe("vendor");
+    // a vendor's ?vendorId is ignored — it still only sees itself
+    const list = (await a(`/vendor/orders/list?range=7d&vendorId=${ids.b}`)).body;
+    expect(list.count).toBeGreaterThan(0);
+    expect(list.rows.every((o: { vendorId: string }) => o.vendorId === ids.a)).toBe(true);
+    const reports = (await a("/vendor/reports?range=7d")).body;
+    expect(reports.days).toHaveLength(7);
+    expect(reports.byVendor.map((r: { vendor: { id: string } }) => r.vendor.id)).toEqual([ids.a]);
+    const payments = (await a("/vendor/payments?range=today")).body;
+    expect(payments.totals.netMinor + payments.totals.feeMinor).toBe(payments.totals.grossMinor);
+    // tablet vendors have no POS to sync from
+    expect((await a("/vendor/menu/sync", { json: {} })).status).toBe(400);
+    expect((await a("/vendor/tables/sync", { json: {} })).status).toBe(400);
+    // a manager must pick a vendor before syncing
+    expect((await mgr("/vendor/menu/sync", { json: {} })).status).toBe(400);
   });
 });

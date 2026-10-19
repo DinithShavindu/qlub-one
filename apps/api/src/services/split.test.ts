@@ -7,7 +7,7 @@ const VENUE = "ven_1";
 function vendor(id: string, sortOrder: number, isOpen = true): Vendor {
   return {
     id, venueId: VENUE, name: id, slug: id, letter: id[0]!.toUpperCase(), emoji: "🍽️", accentToken: "vendor-1",
-    posMode: "tablet", posVendorId: null, isOpen, sortOrder,
+    posMode: "tablet", posVendorId: null, isOpen, sortOrder, feeBps: null,
   };
 }
 function item(id: string, vendorId: string, priceMinor: number, available = true): MenuItem {

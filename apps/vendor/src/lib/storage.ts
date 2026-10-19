@@ -3,6 +3,7 @@ export const STORAGE_KEYS = {
   theme: "kds-theme",
   sound: "kds-sound",
   venueCode: "kds-venue-code",
+  vendorFilter: "panel-vendor-filter",
 } as const;
 
 export function readStorage(key: string): string | null {

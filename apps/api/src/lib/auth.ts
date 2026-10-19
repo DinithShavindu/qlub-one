@@ -47,7 +47,14 @@ export interface VendorSession {
   venueId: string;
 }
 
-export function setVendorSession(c: Context, s: VendorSession) {
+/** Any vendor-panel session: a vendor (vendorId set) or a multivendor venue manager (vendorId null). */
+export interface PanelSession {
+  role: "vendor" | "manager";
+  vendorId: string | null;
+  venueId: string;
+}
+
+export function setVendorSession(c: Context, s: VendorSession | PanelSession) {
   setCookie(c, COOKIE.vendor, encodeSession({ ...s }, TWELVE_HOURS), { ...cookieOpts, maxAge: TWELVE_HOURS });
 }
 export function clearVendorSession(c: Context) {
@@ -58,6 +65,15 @@ export function requireVendor(c: Context): VendorSession {
   const s = decodeSession<VendorSession>(getCookie(c, COOKIE.vendor));
   if (!s?.vendorId || !s.venueId) throw unauthorized("Vendor session expired — log in with your PIN");
   return { vendorId: s.vendorId, venueId: s.venueId };
+}
+
+/** Vendor or manager. Sessions issued before roles existed are vendor sessions. */
+export function requirePanel(c: Context): PanelSession {
+  const s = decodeSession<Partial<PanelSession>>(getCookie(c, COOKIE.vendor));
+  if (!s?.venueId) throw unauthorized("Session expired — log in with your PIN");
+  if (s.role === "manager") return { role: "manager", vendorId: null, venueId: s.venueId };
+  if (!s.vendorId) throw unauthorized("Session expired — log in with your PIN");
+  return { role: "vendor", vendorId: s.vendorId, venueId: s.venueId };
 }
 
 /* ── admin ── */

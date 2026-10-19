@@ -99,6 +99,9 @@ async function seedVenue(c: Awaited<ReturnType<typeof db>>, v: SeedVenue, now: D
     slug: slugify(v.name),
     code: v.code,
     type: "food_court",
+    flow: "qsr",
+    gateway: "qlub_test",
+    gatewayMerchantId: null,
     currency: "AED",
     timezone: "Asia/Dubai",
     feeBps: 100,
@@ -132,6 +135,7 @@ async function seedVenue(c: Awaited<ReturnType<typeof db>>, v: SeedVenue, now: D
       posVendorId: sv.posVendorId,
       isOpen: true,
       sortOrder: i,
+      feeBps: null,
       pinHash: await bcrypt.hash(pin, 8),
     });
   }

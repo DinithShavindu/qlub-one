@@ -56,7 +56,11 @@ export function Sidebar() {
         >
           Places
         </RailLink>
-        <RailLink href="/venues/new" active={pathname.startsWith("/venues/new")} icon={<Plus className="h-5 w-5" />}>
+        <RailLink
+          href="/onboard"
+          active={pathname.startsWith("/onboard") || pathname.startsWith("/venues/new") || pathname.startsWith("/restaurants/new")}
+          icon={<Plus className="h-5 w-5" />}
+        >
           Onboard
         </RailLink>
         <RailLink href="/qrs" active={pathname.startsWith("/qrs")} icon={<QrCode className="h-5 w-5" />}>

@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, ExternalLink, LayoutDashboard, 
 import { Button, StatTile, apiFetch, formatDuration } from "@one/ui";
 import type { AdminVenueDetailResponse, GoLiveResponse } from "@one/contracts";
 import { ButtonLink } from "@/components/ButtonLink";
-import { VENUE_TYPE_LABEL, baselineLine, plural } from "@/lib/format";
+import { FLOW_SHORT, GATEWAY_LABEL, VENUE_TYPE_LABEL, baselineLine, feePct, plural } from "@/lib/format";
 import { errorMessage, qk, useTables } from "@/lib/queries";
 
 function CheckRow({ ok, warn, children }: { ok: boolean; warn?: boolean; children: ReactNode }) {
@@ -84,7 +84,7 @@ export function GoLiveSummary({ detail, onBack }: { detail: AdminVenueDetailResp
     <div className="flex flex-col gap-6">
       <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
         <CheckRow ok>
-          Venue <strong>{venue.name}</strong> · {VENUE_TYPE_LABEL[venue.type]} · {venue.currency} · {venue.timezone} · qlub fee {(venue.feeBps / 100).toFixed(1)}%
+          Venue <strong>{venue.name}</strong> · {VENUE_TYPE_LABEL[venue.type]} · {FLOW_SHORT[venue.flow]} · {GATEWAY_LABEL[venue.gateway]} · {venue.currency} · qlub commission {feePct(venue.feeBps)}
         </CheckRow>
         <CheckRow ok={vendors.length > 0}>{plural(vendors.length, "vendor")}</CheckRow>
         <CheckRow ok={itemCount > 0}>{plural(itemCount, "menu item")}</CheckRow>

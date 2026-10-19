@@ -343,6 +343,9 @@ function QrManager() {
             <TogglePill active={type === ""} onClick={() => setUrl({ type: undefined })}>
               All types
             </TogglePill>
+            <TogglePill active={type === "restaurant"} onClick={() => setUrl({ type: "restaurant" })}>
+              Restaurant
+            </TogglePill>
             <TogglePill active={type === "food_court"} onClick={() => setUrl({ type: "food_court" })}>
               Food court
             </TogglePill>

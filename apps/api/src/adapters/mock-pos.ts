@@ -5,7 +5,7 @@
 import { minorToDecimal, parseDecimalToMinor, type Vendor } from "@one/contracts";
 import { config } from "../config";
 import { logger } from "../lib/logger";
-import { PosError, type PosAdapter, type PosDirectoryEntry, type PosMenu, type PosOrderInput } from "./types";
+import { PosError, type PosAdapter, type PosDirectoryEntry, type PosMenu, type PosOrderInput, type PosTable } from "./types";
 
 interface MockPosMenu {
   store: { name: string; currency: string };
@@ -55,9 +55,15 @@ function requirePosId(vendor: Vendor): string {
   return vendor.posVendorId;
 }
 
-export const mockPosAdapter: PosAdapter & { listVendors(): Promise<PosDirectoryEntry[]> } = {
+export const mockPosAdapter: PosAdapter & { listVendors(): Promise<PosDirectoryEntry[]>; getFloorPlan(vendor: Vendor): Promise<PosTable[]> } = {
   async listVendors() {
     return call<PosDirectoryEntry[]>(null, "GET", "/pos/vendors");
+  },
+
+  async getFloorPlan(vendor) {
+    const id = requirePosId(vendor);
+    const res = await call<{ tables: { tableId: string; name: string; section: string; seats: number }[] }>(id, "GET", `/pos/${id}/tables`);
+    return res.tables.map((t) => ({ posTableId: t.tableId, name: t.name, section: t.section, seats: t.seats }));
   },
 
   async getMenu(vendor): Promise<PosMenu> {

@@ -78,9 +78,16 @@ export interface VendorSplit {
   netMinor: number;
 }
 
-/** qlub fee is per vendor order: fee = round_half_up(subtotal × feeBps / 10 000). */
-export function splitForVendors(groups: Pick<QuoteGroup, "vendorId" | "subtotalMinor">[], feeBps: number): VendorSplit[] {
-  return groups.map((g) => ({ vendorId: g.vendorId, ...splitFee(g.subtotalMinor, feeBps) }));
+/**
+ * qlub fee is per vendor order: fee = round_half_up(subtotal × feeBps / 10 000).
+ * `feeBps` is the venue rate, or a per-vendor lookup when vendors carry their own commission.
+ */
+export function splitForVendors(
+  groups: Pick<QuoteGroup, "vendorId" | "subtotalMinor">[],
+  feeBps: number | ((vendorId: string) => number),
+): VendorSplit[] {
+  const rate = typeof feeBps === "number" ? () => feeBps : feeBps;
+  return groups.map((g) => ({ vendorId: g.vendorId, ...splitFee(g.subtotalMinor, rate(g.vendorId)) }));
 }
 
 export function assertSplitInvariant(masterSubtotalMinor: number, parts: { subtotalMinor: number }[]): void {

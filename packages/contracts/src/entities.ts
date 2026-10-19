@@ -3,9 +3,22 @@ import { z } from "zod";
 export const IsoDate = z.string();
 
 export const VenueStatus = z.enum(["draft", "live"]);
-/** Multivendor venue kinds. Both group many vendors under one venue, one QR set, one settlement. */
-export const VenueType = z.enum(["food_court", "hotel"]);
+/**
+ * `restaurant` = single venue holding exactly one vendor (the restaurant itself).
+ * `food_court` / `hotel` = multivendor venue: a set of restaurants working together, one QR set, one settlement.
+ */
+export const VenueType = z.enum(["restaurant", "food_court", "hotel"]);
 export type VenueType = z.infer<typeof VenueType>;
+export const MULTIVENDOR_TYPES = ["food_court", "hotel"] as const satisfies readonly VenueType[];
+export const isMultivendor = (t: VenueType) => t !== "restaurant";
+
+/** One mode per venue. QSR: guest scans, orders and pays. PAT: the order is already on the POS; guest scans, sees the bill, pays. */
+export const OrderFlow = z.enum(["qsr", "pat"]);
+export type OrderFlow = z.infer<typeof OrderFlow>;
+
+/** Gateway the venue settles through. All are simulated here; `qlub_test` is the default sandbox. */
+export const PaymentGateway = z.enum(["qlub_test", "checkout", "stripe", "adyen"]);
+export type PaymentGateway = z.infer<typeof PaymentGateway>;
 export const PosMode = z.enum(["mock_pos", "tablet"]);
 export type PosMode = z.infer<typeof PosMode>;
 
@@ -20,8 +33,12 @@ export const Venue = z.object({
   /** Short uppercase code staff type on the vendor login screen, e.g. "HARBOUR". */
   code: z.string(),
   type: VenueType,
+  flow: OrderFlow,
+  gateway: PaymentGateway,
+  gatewayMerchantId: z.string().nullable(),
   currency: z.string(),
   timezone: z.string(),
+  /** qlub commission, basis points per vendor order. Vendors may override. */
   feeBps: z.number().int(),
   status: VenueStatus,
   setupDurationMs: z.number().int().nullable(),
@@ -42,6 +59,8 @@ export const Vendor = z.object({
   posVendorId: z.string().nullable(),
   isOpen: z.boolean(),
   sortOrder: z.number().int(),
+  /** Commission override in bps; null = the venue's `feeBps`. */
+  feeBps: z.number().int().nullable(),
 });
 export type Vendor = z.infer<typeof Vendor>;
 
@@ -52,6 +71,8 @@ export const Table = z.object({
   qrToken: z.string(),
   /** Set = an individual vendor's QR (scan opens only that vendor). Null/missing = shared venue QR, every vendor. */
   vendorId: z.string().nullable().optional(),
+  /** Set when the table came from the POS floor plan (table sync). */
+  posTableId: z.string().nullable().optional(),
 });
 export type Table = z.infer<typeof Table>;
 

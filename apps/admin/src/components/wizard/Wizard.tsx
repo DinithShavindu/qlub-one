@@ -43,7 +43,7 @@ export function Wizard({ venueId }: { venueId: string | null }) {
       if (!venueId) {
         return apiFetch<{ venue: Venue; onboardingRun: OnboardingRun }>("/v1/admin/venues", { method: "POST", json: req });
       }
-      const changed = d && (d.venue.name !== req.name || d.venue.type !== req.type || d.venue.feeBps !== req.feeBps);
+      const changed = d && (d.venue.name !== req.name || d.venue.type !== req.type || d.venue.flow !== req.flow || d.venue.gateway !== req.gateway || d.venue.gatewayMerchantId !== req.gatewayMerchantId || d.venue.feeBps !== req.feeBps);
       if (changed) await apiFetch(`/v1/admin/venues/${venueId}`, { method: "PATCH", json: req });
       return null;
     },
@@ -58,6 +58,7 @@ export function Wizard({ venueId }: { venueId: string | null }) {
           itemCount: 0,
           onboardingRun: created.onboardingRun,
           baselineMinPerVendor: 30,
+          hasManagerPin: false,
         };
         qc.setQueryData(qk.venue(created.venue.id), seed);
         void qc.invalidateQueries({ queryKey: qk.venue(created.venue.id) });
@@ -109,7 +110,7 @@ export function Wizard({ venueId }: { venueId: string | null }) {
         <div className="min-w-0">
           <p className="text-micro font-semibold uppercase text-ink-muted">Onboarding</p>
           <h1 className="flex items-center gap-3 font-display text-h1 font-bold">
-            <span className="truncate">{d?.venue.name ?? "New food court"}</span>
+            <span className="truncate">{d?.venue.name ?? "New food court / hotel"}</span>
             {d && <VenueStatusPill status={d.venue.status} />}
           </h1>
         </div>

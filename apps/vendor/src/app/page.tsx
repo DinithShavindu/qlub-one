@@ -1,7 +1,5 @@
-"use client";
-import { AuthGate } from "@/components/AuthGate";
-import { KdsBoard } from "@/components/kds/KdsBoard";
+import { redirect } from "next/navigation";
 
-export default function KitchenPage() {
-  return <AuthGate>{(me) => <KdsBoard me={me} />}</AuthGate>;
+export default function Home() {
+  redirect("/dashboard");
 }

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, Loader2 } from "lucide-react";
 import type { VendorLoginRequest, VendorMeResponse, VendorVenueLookupResponse } from "@one/contracts";
 import { ApiClientError, apiFetch, unlockAudio, VendorBadge } from "@one/ui";
 import { qk } from "@/lib/queries";
@@ -10,7 +10,10 @@ import { PinPad, PIN_LENGTH } from "./PinPad";
 
 type TileVendor = VendorVenueLookupResponse["vendors"][number];
 
-export function PinStep({ vendor, onBack }: { vendor: TileVendor; onBack: () => void }) {
+/** Who is signing in: one vendor, or the multivendor venue's manager. */
+export type LoginTarget = { kind: "vendor"; vendor: TileVendor } | { kind: "manager"; venueId: string; venueName: string };
+
+export function PinStep({ target, onBack }: { target: LoginTarget; onBack: () => void }) {
   const router = useRouter();
   const qc = useQueryClient();
   const [pin, setPin] = useState("");
@@ -45,7 +48,7 @@ export function PinStep({ vendor, onBack }: { vendor: TileVendor; onBack: () => 
       // the PIN tap is a user gesture → unlock Web Audio for new-order beeps
       void unlockAudio();
       try {
-        const body: VendorLoginRequest = { vendorId: vendor.id, pin: value };
+        const body: VendorLoginRequest = target.kind === "vendor" ? { vendorId: target.vendor.id, pin: value } : { venueId: target.venueId, pin: value };
         const me = await apiFetch<VendorMeResponse>("/v1/vendor/login", { method: "POST", json: body });
         qc.setQueryData(qk.me, me);
         router.replace("/");
@@ -68,7 +71,7 @@ export function PinStep({ vendor, onBack }: { vendor: TileVendor; onBack: () => 
         }
       }
     },
-    [vendor.id, qc, router],
+    [target, qc, router],
   );
 
   const onChange = (next: string) => {
@@ -87,12 +90,19 @@ export function PinStep({ vendor, onBack }: { vendor: TileVendor; onBack: () => 
           className="flex h-16 items-center gap-2 rounded-md px-3 text-body font-semibold text-ink-soft hover:bg-surface-sunk"
         >
           <ArrowLeft className="h-5 w-5" aria-hidden />
-          Change stall
+          Back
         </button>
       </div>
-      <VendorBadge vendor={vendor} size="lg" />
+      {target.kind === "vendor" ? (
+        <VendorBadge vendor={target.vendor} size="lg" />
+      ) : (
+        <span className="inline-flex items-center gap-2.5 font-display text-h2 font-bold">
+          <Building2 className="h-7 w-7 text-brand-strong" aria-hidden />
+          {target.venueName} · manager
+        </span>
+      )}
       <p className="text-body text-ink-soft" id="pin-label">
-        Enter your 4-digit PIN
+        Enter your 4-digit {target.kind === "manager" ? "manager " : ""}PIN
       </p>
       <PinPad value={pin} onChange={onChange} disabled={busy || coolingDown} error={!!error} shakeKey={shakeKey} />
       <div className="min-h-[56px] text-center" aria-live="assertive">

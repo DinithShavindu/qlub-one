@@ -2,7 +2,7 @@
 import { memo } from "react";
 import { Info, MoreHorizontal, Undo2 } from "lucide-react";
 import type { KdsStatus, VendorOrder } from "@one/contracts";
-import { PickupCode, STATUS_LABEL } from "@one/ui";
+import { PickupCode, STATUS_LABEL, VendorBadge, type VendorBadgeVendor } from "@one/ui";
 import { AppButton } from "@/components/AppButton";
 import { cx } from "@/lib/cx";
 import { ACTION_LABEL, isBoardStatus, moveBackTarget, nextStatus } from "@/lib/kds";
@@ -16,7 +16,10 @@ export const KdsOrderCard = memo(function KdsOrderCard({
   fresh,
   onMove,
   onOpen,
+  vendor,
 }: {
+  /** Shown on the combined (venue manager) board so each ticket says whose kitchen it is. */
+  vendor?: VendorBadgeVendor;
   order: VendorOrder;
   now: number;
   fresh: boolean;
@@ -79,6 +82,11 @@ export const KdsOrderCard = memo(function KdsOrderCard({
           <PopoverMenu label={`More actions for order ${order.pickupCode}`} trigger={<MoreHorizontal className="h-7 w-7" />} entries={entries} />
         </div>
 
+        {vendor && (
+          <div className="px-4 pt-1">
+            <VendorBadge vendor={vendor} size="sm" />
+          </div>
+        )}
         {/* tapping the item list also opens the drawer; keyboard users use the header button above */}
         <div className="cursor-pointer px-4 pb-4 pt-2" onClick={() => onOpen(order)}>
           <OrderItems items={order.items} />

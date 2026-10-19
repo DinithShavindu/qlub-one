@@ -3,7 +3,7 @@ import { cx } from "@/lib/cx";
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, LayoutDashboard, Plus, QrCode, Receipt, Rocket, Search, Store } from "lucide-react";
+import { Building2, LayoutDashboard, Plus, QrCode, Receipt, Rocket, Search, Settings, Store } from "lucide-react";
 import { useVenue } from "@/lib/queries";
 import { useCurrentVenueId } from "./use-current-venue-id";
 import { VenueSwitcher } from "./VenueSwitcher";
@@ -31,6 +31,7 @@ export function TopBar() {
   const [switcher, setSwitcher] = useState(false);
   const inVenue = !!venueId && !pathname.startsWith("/venues/new");
   const isDraft = venue.data?.venue.status === "draft";
+  const single = venue.data?.venue.type === "restaurant";
   const icon = "h-[18px] w-[18px]";
 
   useEffect(() => {
@@ -54,13 +55,16 @@ export function TopBar() {
                 Dashboard
               </Tab>
               <Tab href={`/venues/${venueId}/vendors`} active={pathname.endsWith("/vendors")} icon={<Store className={icon} />}>
-                Vendors
+                {single ? "Vendor" : "Vendors"}
               </Tab>
               <Tab href={`/venues/${venueId}/tables`} active={pathname.endsWith("/tables")} icon={<QrCode className={icon} />}>
                 QR Manager
               </Tab>
               <Tab href={`/venues/${venueId}/settlements`} active={pathname.endsWith("/settlements")} icon={<Receipt className={icon} />}>
                 Settlements
+              </Tab>
+              <Tab href={`/venues/${venueId}/settings`} active={pathname.endsWith("/settings")} icon={<Settings className={icon} />}>
+                Settings
               </Tab>
               {isDraft && (
                 <Tab href={`/venues/new?id=${venueId}`} active={false} icon={<Rocket className={icon} />}>
@@ -76,8 +80,12 @@ export function TopBar() {
               <Tab href="/qrs" active={pathname.startsWith("/qrs")} icon={<QrCode className={icon} />}>
                 QR Manager
               </Tab>
-              <Tab href="/venues/new" active={pathname.startsWith("/venues/new")} icon={<Plus className={icon} />}>
-                New venue
+              <Tab
+                href="/onboard"
+                active={pathname.startsWith("/onboard") || pathname.startsWith("/venues/new") || pathname.startsWith("/restaurants/new")}
+                icon={<Plus className={icon} />}
+              >
+                Onboard
               </Tab>
             </>
           )}

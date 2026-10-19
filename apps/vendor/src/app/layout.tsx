@@ -6,8 +6,8 @@ import { THEME_INIT_SCRIPT } from "@/lib/prefs";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Kitchen — qlub One",
-  description: "Vendor kitchen display",
+  title: "Vendor panel — qlub One",
+  description: "Vendor panel: dashboard, orders, payments, tables, QSR orders, menu and reports",
 };
 
 export const viewport: Viewport = {
@@ -17,8 +17,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // dark by default; the inline script flips to light before paint if the user chose it
-    <html lang="en" className={`dark ${fontVariables}`} suppressHydrationWarning>
+    // light by default; the inline script flips to dark before paint if the user chose it
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
